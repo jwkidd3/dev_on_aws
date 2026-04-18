@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 4b — Lambda with DynamoDB, S3 & Triggers</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>⚡ Lab 4b</h1>
+  <h3 style="color:#fff">Lambda with DynamoDB, S3 &amp; Triggers</h3>
+  <p class="small" style="color:#fff">Module 9 — Application Logic <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Extend the execution role with DynamoDB + S3 permissions</li>
+    <li>Update the function to write DDB and generate presigned URLs</li>
+    <li>Add an S3 event trigger on the uploads bucket</li>
+    <li>Publish a version and create an alias</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 4a complete — function <code>lab4-user1</code> deployed</li>
+    <li>Bucket <code>student-user1-uploads-…</code> from Lab 2a still exists</li>
+    <li>Table <code>Items-user1</code> from Lab 3</li>
+    <li>Exported: <code>$BUCKET</code>, account ID in <code>$ACCT</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Grant DDB + S3 <span class="time">6 min</span></h2>
+  <p class="small">The policy template at <code>~/environment/dev-on-aws/lab4/lambda-perms.json</code> uses <code>ACCT</code> and <code>USER</code> placeholders. Render a copy with your real values, then attach:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab4
+
+sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" \
+    lambda-perms.json &gt; /tmp/lambda-perms.json
+
+aws iam put-role-policy \
+    --role-name StudentLambdaRole-$USER_ID \
+    --policy-name LambdaAppAccess \
+    --policy-document file:///tmp/lambda-perms.json</code></pre>
+</section>
+
+<section>
+  <h2>Step 2 — Review the Updated Handler <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab4/handler.py</code> in the editor. Key things to notice:</p>
+  <ul>
+    <li>Clients created at module scope — outside the handler, so they're reused across warm invocations</li>
+    <li>Reads config from env vars (<code>ITEMS_TABLE</code>, <code>UPLOADS_BUCKET</code>) — no hard-coded names</li>
+    <li>Writes the object to S3 and records a DynamoDB row with the presigned URL</li>
+    <li>Returns API-Gateway-style JSON (status + body)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 3 — Redeploy with New Env Vars <span class="time">6 min</span></h2>
+  <pre><code>cd ~/environment/dev-on-aws/lab4
+zip -r function.zip handler.py
+
+aws lambda update-function-code \
+    --function-name lab4-$USER_ID \
+    --zip-file fileb://function.zip 
+
+aws lambda update-function-configuration \
+    --function-name lab4-$USER_ID \
+    --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}" 
+
+aws lambda invoke --function-name lab4-$USER_ID \
+    --payload '{"user":"user1"}' \
+    --cli-binary-format raw-in-base64-out out.json  &amp;&amp; cat out.json</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Add the S3 Trigger <span class="time">6 min</span></h2>
+  <pre><code>aws lambda add-permission \
+    --function-name lab4-$USER_ID \
+    --statement-id AllowS3Invoke \
+    --action lambda:InvokeFunction \
+    --principal s3.amazonaws.com \
+    --source-arn arn:aws:s3:::$BUCKET</code></pre>
+  <p class="small">The notification config at <code>~/environment/dev-on-aws/lab4/notify.json</code> also uses <code>ACCT</code> and <code>USER</code> placeholders. Render and apply:</p>
+  <pre><code>sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" \
+    ~/environment/dev-on-aws/lab4/notify.json &gt; /tmp/notify.json
+
+aws s3api put-bucket-notification-configuration \
+    --bucket $BUCKET \
+    --notification-configuration file:///tmp/notify.json</code></pre>
+</section>
+
+<section>
+  <h2>Step 5 — Fire &amp; Observe <span class="time">6 min</span></h2>
+  <pre><code>echo "hello trigger" | aws s3 cp - s3://$BUCKET/incoming/test.txt
+aws logs tail /aws/lambda/lab4-$USER_ID --follow</code></pre>
+  <ul>
+    <li>Look for a new log stream within ~5 seconds</li>
+    <li>The event payload in the logs includes the S3 object key</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 6 — Version &amp; Alias <span class="time">6 min</span></h2>
+  <pre><code>aws lambda publish-version \
+    --function-name lab4-$USER_ID \
+    --description "lab4b-s3-trigger" 
+
+aws lambda create-alias \
+    --function-name lab4-$USER_ID \
+    --name prod \
+    --function-version 2 </code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ Inline policy <code>LambdaAppAccess</code> attached to the role</li>
+    <li>✅ Direct invoke writes to DDB and returns a working presigned URL</li>
+    <li>✅ Uploading to <code>incoming/</code> auto-triggers the function</li>
+    <li>✅ Version 2 published, alias <code>prod</code> points to it</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

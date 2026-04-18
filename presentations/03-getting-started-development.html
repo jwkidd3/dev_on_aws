@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 3 — Getting Started with Development on AWS</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 3</h1>
+  <h3 class="accent">Getting Started with Development on AWS</h3>
+  <p class="small">SDKs, the CLI, and the patterns they share.</p>
+</section>
+
+<section>
+  <h2>Three Ways to Talk to AWS</h2>
+  <ul>
+    <li><strong>Console</strong> — web UI. Great for learning, bad for repeatability.</li>
+    <li><strong>CLI</strong> — one command, one API call. Perfect for scripts and CI.</li>
+    <li><strong>SDK</strong> — AWS APIs as idiomatic classes / methods in your language</li>
+  </ul>
+  <p class="small">All three hit the same HTTPS endpoints. The console itself is an SDK client.</p>
+</section>
+
+<section>
+  <h2>SDKs (Preinstalled in Cloud9)</h2>
+  <pre><code># In your Cloud9 terminal — SDKs are already on the image.
+# Add one to a project with your language's package manager.
+
+# Python
+pip install boto3
+
+# .NET
+dotnet add package AWSSDK.S3
+
+# Java (Maven, SDK v2)
+&lt;dependency&gt;
+  &lt;groupId&gt;software.amazon.awssdk&lt;/groupId&gt;
+  &lt;artifactId&gt;s3&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+# CLI is always there
+aws --version</code></pre>
+</section>
+
+<section>
+  <h2>Credential Provider Chain</h2>
+  <p class="small">Every SDK looks here, top to bottom. First match wins.</p>
+  <ol>
+    <li>Explicit credentials passed to the client</li>
+    <li><code>AWS_ACCESS_KEY_ID</code> / <code>AWS_SECRET_ACCESS_KEY</code> env vars</li>
+    <li><code>~/.aws/credentials</code> file (selected by <code>AWS_PROFILE</code>)</li>
+    <li>Container / EC2 instance / Lambda execution role ← <strong>this is what Cloud9 uses</strong></li>
+  </ol>
+  <p class="small"><strong>Never hard-code keys.</strong> In Cloud9 you get temporary credentials from the instance role automatically — <code>aws sts get-caller-identity</code> just works.</p>
+</section>
+
+<section>
+  <h2>Your First SDK Call</h2>
+  <pre><code># Python
+import boto3
+for b in boto3.client("s3").list_buckets()["Buckets"]:
+    print(b["Name"])</code></pre>
+  <pre><code>// C#
+var s3 = new AmazonS3Client();
+foreach (var b in (await s3.ListBucketsAsync()).Buckets)
+    Console.WriteLine(b.BucketName);</code></pre>
+  <pre><code>// Java v2
+try (S3Client s3 = S3Client.create()) {
+  s3.listBuckets().buckets().forEach(b -&gt; System.out.println(b.name()));
+}</code></pre>
+</section>
+
+<section>
+  <h2>Common Patterns</h2>
+  <ul>
+    <li><strong>Paginators</strong> — iterate one page at a time without bookkeeping</li>
+    <li><strong>Waiters</strong> — block until a resource exists / is ready</li>
+    <li><strong>Retry &amp; backoff</strong> — built into every SDK; tune, don't replace</li>
+    <li><strong>Typed exceptions</strong> — <code>NoSuchBucket</code>, <code>AccessDenied</code></li>
+    <li><strong>Presigned URLs</strong> — time-limited access to private resources</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Regions Matter</h2>
+  <ul>
+    <li>Most services are <em>regional</em> — a bucket in <code>us-east-1</code> ≠ <code>eu-west-1</code></li>
+    <li>Set on the client (<code>region_name="us-east-1"</code>) or via <code>AWS_REGION</code></li>
+    <li>IAM, Route 53, CloudFront are <em>global</em> — no region</li>
+    <li>Misconfigured region is the #1 cause of "resource not found"</li>
+  </ul>
+</section>
+
+<section>
+  <h2>AWS Cloud9 — Our Class IDE</h2>
+  <ul>
+    <li>Browser-based IDE that runs on an EC2 instance in your account</li>
+    <li>AWS CLI, Python, .NET, Java, <code>git</code>, <code>jq</code>, Docker — all pre-installed</li>
+    <li>Authenticates through the instance IAM role — no <code>aws configure</code>, no access keys on your laptop</li>
+    <li>Every student has a Cloud9 environment waiting in the class account</li>
+  </ul>
+  <p class="small">In this course, every lab is done inside Cloud9. Your laptop just needs a browser.</p>
+</section>
+
+<section>
+  <h2>Why Cloud9 for the Class</h2>
+  <ul>
+    <li>Identical environment for every student — no "works on my laptop"</li>
+    <li>Credentials never leave AWS — the instance role rotates tokens automatically</li>
+    <li>Shareable URLs for pair-debugging</li>
+    <li>Your work is persisted on EBS between days</li>
+  </ul>
+  <p class="small">Outside this class, local VS Code + JetBrains IDEs + AWS Toolkit remain first-class choices for real projects.</p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 4 — IAM. Every SDK call you just saw needs permission to run.</p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

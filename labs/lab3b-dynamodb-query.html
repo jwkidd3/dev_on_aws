@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 3b — Query, GSI & Pagination</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🗄️ Lab 3b</h1>
+  <h3 style="color:#fff">Query, GSI &amp; Pagination</h3>
+  <p class="small" style="color:#fff">Module 8 — Databases <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Bulk-load a table from a JSON file</li>
+    <li>Query by partition + sort key with a filter expression</li>
+    <li>Paginate through results with <code>LastEvaluatedKey</code></li>
+    <li>Query the <code>byCategory</code> GSI</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 3a complete — table active, 2 items present</li>
+    <li>Cloud9 terminal in <code>~/environment/dev-on-aws/lab3</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Review seed.py <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab3/seed.py</code> in the Cloud9 editor. It builds 30 items in memory with seeded randomness:</p>
+  <ul>
+    <li>Each row gets the same <code>pk = "USER#user1"</code> (change to your user if not <code>user1</code>)</li>
+    <li><code>sk</code> ranges <code>ITEM#003</code>..<code>ITEM#032</code> to avoid colliding with Lab 3a's <code>ITEM#001</code>, <code>ITEM#002</code></li>
+    <li><code>price</code> is a <code>Decimal</code> — required by DynamoDB (no <code>float</code>)</li>
+    <li><code>random.seed(42)</code> means everyone gets identical rows</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 2 — Run bulk_load.py <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab3/bulk_load.py</code> to see the batch writer. Then run it:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab3
+python3 bulk_load.py
+# loaded 30 rows</code></pre>
+  <p class="small">The resource API's batch writer chunks to 25 items/call and retries <code>UnprocessedItems</code>.</p>
+</section>
+
+<section>
+  <h2>Step 3 — Query + Filter + Paginate <span class="time">6 min</span></h2>
+  <pre><code>from boto3.dynamodb.conditions import Key, Attr
+
+kwargs = {
+  "KeyConditionExpression": Key("pk").eq("USER#$USER_ID")
+                         &amp; Key("sk").begins_with("ITEM#"),
+  "FilterExpression": Attr("price").lt(Decimal("20")),
+  "Limit": 10
+}
+total = 0
+while True:
+    r = table.query(**kwargs)
+    total += len(r["Items"])
+    if "LastEvaluatedKey" not in r:
+        break
+    kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+print("items under $20:", total)</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Query the GSI <span class="time">6 min</span></h2>
+  <pre><code>resp = table.query(
+  IndexName="byCategory",
+  KeyConditionExpression=Key("category").eq("widgets")
+                     &amp; Key("price").lt(Decimal("15"))
+)
+for x in resp["Items"]:
+    print(x["sk"], x["title"], x["price"])</code></pre>
+  <ul>
+    <li>GSI query doesn't require the table's primary key</li>
+    <li>GSI reads are eventually consistent</li>
+    <li>Only projected attributes come back (your GSI projects ALL)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 5 — Conditional Update <span class="time">6 min</span></h2>
+  <pre><code>from decimal import Decimal
+
+table.update_item(
+  Key={"pk":"USER#$USER_ID","sk":"ITEM#003"},
+  UpdateExpression="SET price = :new ADD #v :one",
+  ConditionExpression="price &lt;&gt; :new",
+  ExpressionAttributeNames={"#v":"views"},
+  ExpressionAttributeValues={":new":Decimal("9.99"),":one":1},
+  ReturnValues="ALL_NEW"
+)</code></pre>
+  <p class="small">Re-run the same call — second time raises <code>ConditionalCheckFailedException</code>. This is how you prevent lost updates.</p>
+</section>
+
+<section>
+  <h2>Step 6 — Scan (Just Once, to Feel It) <span class="time">6 min</span></h2>
+  <pre><code>import time
+t0 = time.time()
+resp = table.scan(FilterExpression=Attr("category").eq("widgets"))
+print(f"{len(resp['Items'])} items in {time.time()-t0:.2f}s")</code></pre>
+  <p class="small">Scan reads the whole table, then filters. This is why you design for Query.</p>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ 30+ items loaded</li>
+    <li>✅ Filtered Query returns items priced under $20, paginated</li>
+    <li>✅ GSI query returns widgets under $15 without touching <code>pk</code></li>
+    <li>✅ You've seen Scan's cost first-hand and chosen not to use it again</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

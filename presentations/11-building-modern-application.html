@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 11 — Building a Modern Application</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px 30px; font-size:0.85em; }
+  .reveal .grid div { border-left:4px solid var(--aws-orange); padding-left:10px; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 11</h1>
+  <h3 class="accent">Building a Modern Application</h3>
+  <p class="small">Microservices, event-driven design, and Step Functions.</p>
+</section>
+
+<section>
+  <h2>Monolith Pain</h2>
+  <ul>
+    <li>One codebase, one deploy — a typo in reporting breaks checkout</li>
+    <li>Any team that wants to ship coordinates with every other team</li>
+    <li>All-or-nothing scaling, technology lock-in</li>
+    <li>Long releases → big blast radius → scary rollbacks</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Microservices</h2>
+  <p>Small, independently-deployable services that each own one capability and one data store, communicating over APIs or async events.</p>
+  <div class="grid">
+    <div><strong>Independent deploys</strong></div>
+    <div><strong>Fault isolation</strong></div>
+    <div><strong>Polyglot</strong></div>
+    <div><strong>Scale per load</strong></div>
+  </div>
+  <p class="small">You also accept: distributed-systems problems, mandatory observability, contract testing, eventual consistency.</p>
+</section>
+
+<section>
+  <h2>Decoupling Patterns</h2>
+  <ul>
+    <li><strong>DDD bounded contexts</strong> — one service per business capability</li>
+    <li><strong>Choreography</strong> — services publish events, others subscribe (EventBridge, SNS)</li>
+    <li><strong>Orchestration</strong> — central coordinator calls services in order (Step Functions)</li>
+    <li><strong>Strangler-fig</strong> — move one seam at a time; never "rewrite the monolith"</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Event-Driven on AWS</h2>
+  <ul>
+    <li><strong>EventBridge</strong> — central bus, content-based routing</li>
+    <li><strong>SNS</strong> — fan-out pub/sub, topic-based</li>
+    <li><strong>SQS</strong> — buffering + decoupling, at-least-once delivery</li>
+    <li><strong>Kinesis</strong> — ordered, replayable streams</li>
+    <li><strong>DynamoDB Streams</strong> — change data capture from your table</li>
+  </ul>
+</section>
+
+<section>
+  <h2>AWS Step Functions</h2>
+  <ul>
+    <li>Serverless state machine — JSON describes states and transitions</li>
+    <li><strong>Task</strong>, <strong>Choice</strong>, <strong>Parallel</strong>, <strong>Map</strong>, <strong>Wait</strong>, <strong>Pass/Succeed/Fail</strong></li>
+    <li>Built-in retry, timeout, catch — no boilerplate per Lambda</li>
+    <li><strong>Standard</strong> (1 yr, audit history) vs. <strong>Express</strong> (5 min, high throughput, cheap)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Idempotency Is Mandatory</h2>
+  <ul>
+    <li>Async + event-driven systems will redeliver</li>
+    <li>Same event applied twice must have the same effect</li>
+    <li>Common: a DynamoDB item keyed on event ID, set to "seen" on first handle</li>
+    <li>AWS Lambda Powertools has an idempotency module for Python / Java / .NET</li>
+  </ul>
+</section>
+
+<section>
+  <h2>When Serverless Doesn't Fit</h2>
+  <ul>
+    <li>Heavy per-request CPU — containers cheaper past a threshold</li>
+    <li>Long-lived connections (WebSocket at scale) — ECS/Fargate</li>
+    <li>p99 &lt; 50 ms — cold starts bite</li>
+    <li>State that must live across requests on the same node</li>
+  </ul>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 12 — Cognito, then the capstone lab that ties everything together.</p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 1a — Sign In & Create Your Cloud9 Environment</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.68em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>🧪 Lab 1a</h1>
+  <h3 style="color:#fff">Sign In &amp; Create Your Cloud9 Environment</h3>
+  <p class="small" style="color:#fff">Module 4 — Permissions <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>AWS Account Access <span class="time">3 min</span></h2>
+  <ul>
+    <li><strong>Console:</strong> <code>https://kiddcorp.signin.aws.amazon.com/console</code></li>
+    <li><strong>Username:</strong> <code>user1</code>, <code>user2</code>, … — instructor assigns</li>
+    <li><strong>Password:</strong> handed out separately</li>
+    <li><strong>Region:</strong> <code>us-east-1</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Sign into the class account as your assigned user</li>
+    <li>Create your own Cloud9 IDE (m5.large, SSH)</li>
+    <li>Confirm the AWS CLI + SDKs work from the Cloud9 terminal</li>
+    <li>Learn the "editor for files, terminal for commands" convention used all week</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Sign In <span class="time">3 min</span></h2>
+  <ol>
+    <li>Open the console URL in an incognito window</li>
+    <li>Enter your assigned username (e.g., <code>user1</code>) and password</li>
+    <li>Top-right region selector → <strong>US East (N. Virginia) us-east-1</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Create Your Cloud9 Environment <span class="time">10 min</span></h2>
+  <ol>
+    <li>Console search → <strong>Cloud9</strong> → <strong>Create environment</strong></li>
+    <li>Name: <code>dev-on-aws-user1</code> (replace <code>user1</code> with your assigned user)</li>
+    <li>Environment type: <strong>New EC2 instance</strong></li>
+    <li>Instance type: <strong>m5.large</strong></li>
+    <li>Platform: <strong>Amazon Linux 2023</strong></li>
+    <li>Timeout: <strong>30 minutes</strong> (saves cost when idle)</li>
+    <li>Connection: <strong>Secure Shell (SSH)</strong> ← important, do not pick SSM</li>
+    <li>Network settings: default VPC, any public subnet in <code>us-east-1</code></li>
+    <li><strong>Create</strong> — provisioning takes ~3 minutes</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — Open Cloud9 &amp; Smoke Test <span class="time">8 min</span></h2>
+  <ol>
+    <li>Wait for environment status to go from <em>Creating</em> to <em>Available</em></li>
+    <li>Click <strong>Open</strong> — the IDE loads in a new browser tab</li>
+    <li>Bottom pane is the terminal. Run:</li>
+  </ol>
+  <pre><code>aws --version          # expect aws-cli/2.x
+python3 --version
+git --version
+jq --version
+aws sts get-caller-identity
+# Arn: arn:aws:iam::...:user/user1   ← confirms your IAM identity</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Pull the Course Files <span class="time">4 min</span></h2>
+  <p class="small">Each lab has supporting files (handlers, SAM templates, helper scripts) pre-authored in the course S3 bucket. Sync once; reuse all week.</p>
+  <pre><code>aws s3 sync s3://kiddcorp-class-materials/dev-on-aws/labs/files/ \
+            ~/environment/dev-on-aws/
+
+# Verify — every MISS below means subsequent labs will break, raise hand
+cd ~/environment/dev-on-aws
+for f in lab1/smoke_test.py lab3/seed.py lab4/handler.py \
+         lab4/lambda-perms.json lab6/add_methods.sh \
+         lab7/python/handler.py lab7/template.yaml; do
+  [ -f "$f" ] &amp;&amp; echo "OK   $f" || echo "MISS $f"
+done</code></pre>
+  <p class="small">Every line should say <code>OK</code>. If any say <code>MISS</code>, the sync didn't land — raise your hand before continuing.</p>
+</section>
+
+<section>
+  <h2>Step 5 — Editor vs. Terminal (Class Convention) <span class="time">5 min</span></h2>
+  <p class="small">Throughout the course:</p>
+  <ul>
+    <li><strong>Source files</strong> — already on disk from Step 4. Open in the Cloud9 editor to read, edit, or adjust placeholders (e.g., replace <code>ACCT</code> with your account ID). Save with <strong>⌘S</strong> / <strong>Ctrl+S</strong>.</li>
+    <li><strong>Commands to run</strong> — short snippets (≤ ~5 lines) pasted into the <strong>Cloud9 terminal</strong>. Anything larger lives as a file (see above) and is invoked by name.</li>
+    <li>Never paste multi-line source into a shell prompt — terminals mangle indentation, quotes, and tabs.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 6 — Prefix Convention <span class="time">5 min</span></h2>
+  <p class="small">Every resource you create today must start with your user prefix:</p>
+  <ul>
+    <li>S3 buckets: <code>student-user1-*</code></li>
+    <li>DynamoDB tables: <code>Items-user1</code></li>
+    <li>Lambda functions: <code>lab4-user1</code>, <code>lab7-user1</code></li>
+    <li>IAM policies you create: <code>Student*-user1</code></li>
+  </ul>
+  <p class="small">The policies attached to your <code>user1</code> IAM user enforce this prefix. Off-prefix actions return <code>AccessDenied</code>.</p>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">4 min</span></h2>
+  <ul>
+    <li>✅ Logged into the AWS console as your assigned user, region <code>us-east-1</code></li>
+    <li>✅ Cloud9 environment <code>dev-on-aws-userN</code> created on <strong>m5.large</strong> with <strong>SSH</strong> connection</li>
+    <li>✅ Cloud9 IDE opens; terminal responds; <code>aws sts get-caller-identity</code> returns your IAM user ARN</li>
+    <li>✅ Course files synced into <code>~/environment/dev-on-aws/</code> (visible in the Cloud9 file tree)</li>
+    <li>✅ You can state the editor-vs-terminal convention and the resource-prefix convention</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

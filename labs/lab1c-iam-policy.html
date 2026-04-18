@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 1c — Test Permissions & Author IAM Policy</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🧪 Lab 1c</h1>
+  <h3 style="color:#fff">Test Permissions &amp; Author IAM Policy</h3>
+  <p class="small" style="color:#fff">Module 4 — Permissions <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Observe an intentional "access denied" and read the error message</li>
+    <li>Write a least-privilege policy for S3 delete scoped to your user prefix</li>
+    <li>Attach the policy to your user</li>
+    <li>Verify the new permission works end-to-end</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 1b complete — Cloud9 open, SDK smoke test passes</li>
+    <li><code>aws sts get-caller-identity</code> returns your assumed-role ARN</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Test a Denied Call <span class="time">7 min</span></h2>
+  <pre><code>aws iam create-user \
+    --user-name test-user-blocked </code></pre>
+  <ul>
+    <li>Expected: <code>AccessDenied</code> — your role cannot create IAM users</li>
+    <li>Read the full error; it names your user ARN and the action</li>
+    <li>This is the safety net — even a misconfigured lab can't change IAM identities</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 2 — Confirm the Gap You'll Fill <span class="time">7 min</span></h2>
+  <pre><code># Create a throwaway bucket in your prefix ($USER_ID set by Lab 1b)
+PROBE=student-$USER_ID-probe-$(date +%s)
+aws s3 mb s3://$PROBE
+
+# Try to delete it — fails with AccessDenied (no delete rights yet)
+aws s3 rb s3://$PROBE</code></pre>
+</section>
+
+<section>
+  <h2>Step 3 — Author the Policy <span class="time">7 min</span></h2>
+  <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "s3:DeleteBucket",
+      "s3:DeleteObject",
+      "s3:ListBucket"
+    ],
+    "Resource": [
+      "arn:aws:s3:::student-user1-*",
+      "arn:aws:s3:::student-user1-*/*"
+    ]
+  }]
+}</code></pre>
+  <p class="small">Save as <code>student-allow-bucket-delete.json</code> — replace <code>user1</code> with your user.</p>
+</section>
+
+<section>
+  <h2>Step 4 — Attach to Your User <span class="time">6 min</span></h2>
+  <ol>
+    <li>Console → IAM → <strong>Policies</strong> → <strong>Create policy</strong> → JSON tab</li>
+    <li>Paste the JSON. Name: <code>StudentAllowBucketDelete-user1</code></li>
+    <li>Attach to your user: IAM → Users → <code>user1</code> → <strong>Add permissions</strong> → <strong>Attach policies directly</strong></li>
+  </ol>
+  <p class="small">CLI alternative:</p>
+  <pre><code>aws iam create-policy --policy-name StudentAllowBucketDelete-$USER_ID \
+    --policy-document file://student-allow-bucket-delete.json   # (may itself fail; fall back to console)</code></pre>
+</section>
+
+<section>
+  <h2>Step 5 — Verify <span class="time">6 min</span></h2>
+  <pre><code># Retry the delete from Step 2 — now succeeds
+aws s3 rb s3://$PROBE
+
+# Confirm you still can't delete someone else's bucket
+aws s3 rb s3://another-student-bucket
+# → AccessDenied (exactly what we want)</code></pre>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Discussion <span class="time">3 min</span></h2>
+  <ul>
+    <li>Why scope the <code>Resource</code> to your prefix instead of <code>"*"</code>?</li>
+    <li>What would need to change to run this in production?</li>
+    <li>If the CLI succeeds but your SDK code fails with the same Cloud9 role — what's the most likely cause?</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ <code>iam:CreateUser</code> still fails — safety net works</li>
+    <li>✅ <code>StudentAllowBucketDelete-userN</code> exists and is attached</li>
+    <li>✅ You can delete buckets in your prefix</li>
+    <li>✅ You still can't delete buckets outside your prefix</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 5a — API Gateway in the Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>🔌 Lab 5a</h1>
+  <h3 style="color:#fff">API Gateway in the Console</h3>
+  <p class="small" style="color:#fff">Module 10 — APIs <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Build a REST API through the Console wizard</li>
+    <li>Add a resource and a POST method with Lambda proxy integration</li>
+    <li>Use the built-in <strong>Test</strong> console to call the method</li>
+    <li>Deploy to a <code>dev</code> stage and hit it from Cloud9</li>
+  </ul>
+  <p class="small">Lab 5b layers on validation, CORS, and access logging (mostly CLI).</p>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 4a or 4b complete — <code>lab4-user1</code> exists</li>
+    <li>AWS Console tab open</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the REST API <span class="time">6 min</span></h2>
+  <ol>
+    <li>Console → <strong>API Gateway</strong> → <strong>Create API</strong></li>
+    <li>Pick <strong>REST API</strong> → <strong>Build</strong></li>
+    <li>New API, Name: <code>dev-on-aws-user1</code></li>
+    <li>Endpoint type: <strong>Regional</strong></li>
+    <li><strong>Create API</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Add /items Resource <span class="time">5 min</span></h2>
+  <ol>
+    <li>Left tree → <strong>/</strong> is selected → <strong>Create resource</strong></li>
+    <li>Resource name: <code>items</code> → <strong>Create resource</strong></li>
+    <li>With <code>/items</code> selected → <strong>Create method</strong></li>
+    <li>Method type: <strong>POST</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — Wire Lambda Proxy <span class="time">5 min</span></h2>
+  <ol>
+    <li>Integration type: <strong>Lambda function</strong></li>
+    <li>Toggle <strong>Lambda proxy integration</strong> → ON</li>
+    <li>Lambda function: <code>lab4-user1</code></li>
+    <li><strong>Create method</strong> — accept the "add invoke permission" prompt</li>
+    <li>You should see the method diagram: Client → Method Request → Lambda → Method Response</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 4 — Test from the Console <span class="time">5 min</span></h2>
+  <ol>
+    <li>With POST selected → <strong>Test</strong> tab</li>
+    <li>Request body:
+      <pre><code>{"name":"API Gateway"}</code></pre></li>
+    <li><strong>Test</strong></li>
+    <li>Scroll right — Status 200, body contains your greeting</li>
+    <li>Logs panel at the bottom shows the full request/response trace — read it</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Deploy to a Stage <span class="time">5 min</span></h2>
+  <ol>
+    <li>Top-right → <strong>Deploy API</strong></li>
+    <li>Stage: <code>*New stage*</code> → name: <code>dev</code></li>
+    <li><strong>Deploy</strong></li>
+    <li>Note the <strong>Invoke URL</strong> pattern: <code>https://&lt;API_ID&gt;.execute-api.us-east-1.amazonaws.com/dev</code></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — Call It from Cloud9 <span class="time">5 min</span></h2>
+  <pre><code># In Cloud9 terminal — $API_ID already set in Step 1
+URL="https://$API_ID.execute-api.us-east-1.amazonaws.com/dev/items"
+echo "export URL=$URL" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env
+
+curl -i -X POST $URL \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Cloud9"}'</code></pre>
+  <p class="small">Expect HTTP 200 and your Lambda's JSON body.</p>
+</section>
+
+<section>
+  <h2>Step 7 — Capture the IDs for Lab 5b <span class="time">5 min</span></h2>
+  <pre><code>API_ID=$(aws apigateway get-rest-apis \
+    --query "items[?name=='dev-on-aws-$USER_ID'].id" -o text)
+ITEMS_ID=$(aws apigateway get-resources --rest-api-id $API_ID \
+    --query "items[?path=='/items'].id" -o text)
+ACCT=$(aws sts get-caller-identity --query Account -o text)
+LAMBDA_ARN=$(aws lambda get-function --function-name lab4-$USER_ID \
+    --query Configuration.FunctionArn -o text)
+
+cat &gt;&gt; ~/.dev-on-aws.env &lt;&lt;EOF
+export API_ID=$API_ID
+export ITEMS_ID=$ITEMS_ID
+export ACCT=$ACCT
+export LAMBDA_ARN=$LAMBDA_ARN
+EOF</code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ REST API <code>dev-on-aws-user1</code> created via Console wizard</li>
+    <li>✅ POST /items wired to <code>lab4-user1</code> with proxy integration</li>
+    <li>✅ Console <strong>Test</strong> returns 200 with a full request trace</li>
+    <li>✅ <code>dev</code> stage deployed; invoke URL works from Cloud9 <code>curl</code></li>
+    <li>✅ <code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$ACCT</code>, <code>$LAMBDA_ARN</code> exported</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

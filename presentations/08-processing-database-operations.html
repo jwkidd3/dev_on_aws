@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 8 — Processing Your Database Operations</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 8</h1>
+  <h3 class="accent">Processing Your Database Operations</h3>
+  <p class="small">CRUD with DynamoDB from code.</p>
+</section>
+
+<section>
+  <h2>Put + Conditional Write</h2>
+  <pre><code>table = boto3.resource("dynamodb").Table("Items")
+
+table.put_item(
+  Item={"pk":"USER#user1","sk":"ITEM#001","title":"Blue widget","price":19.95},
+  ConditionExpression="attribute_not_exists(pk)"
+)</code></pre>
+  <p class="small">Fails with <code>ConditionalCheckFailedException</code> if it already exists. Catch and move on — that's idempotency.</p>
+</section>
+
+<section>
+  <h2>Get &amp; Update</h2>
+  <pre><code>table.get_item(Key={"pk":"USER#user1","sk":"ITEM#001"},
+               ProjectionExpression="title, price")
+
+table.update_item(
+  Key={"pk":"USER#user1","sk":"ITEM#001"},
+  UpdateExpression="SET price = :p ADD views :one",
+  ExpressionAttributeValues={":p": Decimal("17.50"), ":one": 1},
+  ReturnValues="ALL_NEW")</code></pre>
+  <p class="small">Update verbs: <strong>SET</strong> · <strong>ADD</strong> · <strong>REMOVE</strong> · <strong>DELETE</strong>.</p>
+</section>
+
+<section>
+  <h2>Query &amp; Scan</h2>
+  <ul>
+    <li><strong>Query</strong> — uses the primary key (required); efficient. Use this.</li>
+    <li><strong>Scan</strong> — reads every item and filters client-side. Avoid.</li>
+    <li>Both paginate — check <code>LastEvaluatedKey</code></li>
+    <li>Filter expressions reduce the response, not the read cost</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Query Example</h2>
+  <pre><code>from boto3.dynamodb.conditions import Key
+
+resp = table.query(
+  KeyConditionExpression=Key("pk").eq("USER#user1")
+                      &amp; Key("sk").begins_with("ITEM#"),
+  Limit=25
+)
+for item in resp["Items"]:
+    print(item["title"])</code></pre>
+</section>
+
+<section>
+  <h2>Batch &amp; Transaction</h2>
+  <ul>
+    <li><strong>BatchGetItem / BatchWriteItem</strong> — up to 25 writes / 100 gets per call; retry <code>UnprocessedItems</code></li>
+    <li><strong>TransactWriteItems</strong> — up to 100 actions, all-or-nothing, costs 2× WCU</li>
+    <li>Use transactions only when "two items must change together"</li>
+  </ul>
+</section>
+
+<section>
+  <h2>PartiQL</h2>
+  <pre><code>SELECT title, price
+FROM  "Items"
+WHERE pk = 'USER#user1'
+  AND begins_with(sk, 'ITEM#')</code></pre>
+  <p class="small">SQL-flavored wrapper. Good for ad-hoc; nudges people toward scans without warning.</p>
+</section>
+
+<section>
+  <h2>Best Practices</h2>
+  <ul>
+    <li>List access patterns first; design key schema second</li>
+    <li>Prefer <strong>Query</strong> over <strong>Scan</strong>, every time</li>
+    <li>Use <strong>GSIs</strong> for "second way to look up the same data"</li>
+    <li>Use <strong>TTL</strong> to expire ephemeral items (sessions, carts, codes)</li>
+    <li>Alarm on <code>ThrottledRequests</code> — earliest sign of hot keys</li>
+  </ul>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 2 × 45 min</span>
+  <h2>🗄️ Labs 3a · 3b</h2>
+  <ul>
+    <li><strong>3a — DynamoDB in the Console.</strong> Item editor (form + JSON), Query vs. Scan, PartiQL.</li>
+    <li><strong>3b — DynamoDB via SDK.</strong> Bulk load, filtered Query, GSI, conditional update.</li>
+  </ul>
+  <p class="small"><code>labs/lab3a-*.html · lab3b-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

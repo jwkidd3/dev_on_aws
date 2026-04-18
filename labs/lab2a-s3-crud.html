@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 2a — S3 in the Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>🗂️ Lab 2a</h1>
+  <h3 style="color:#fff">S3 in the Console</h3>
+  <p class="small" style="color:#fff">Module 6 — Storage <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Create an S3 bucket through the AWS Console UI</li>
+    <li>Upload an object and set metadata/content-type from the UI</li>
+    <li>View object details and the ETag</li>
+    <li>Enable versioning and observe object versions</li>
+    <li>Delete an object and read the error when a policy denies it</li>
+  </ul>
+  <p class="small">Lab 2b does the same things from code. Lab 2a is console muscle-memory.</p>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 1a–1c complete</li>
+    <li>AWS Console tab open at S3</li>
+    <li>Your user: <code>user1</code> (replace throughout)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the Bucket (Console) <span class="time">6 min</span></h2>
+  <ol>
+    <li>S3 console → <strong>Create bucket</strong></li>
+    <li>Name: <code>student-user1-uploads-&lt;today&gt;</code> (e.g. <code>…-20260417</code>)</li>
+    <li>Region: <strong>US East (N. Virginia) us-east-1</strong></li>
+    <li>Object Ownership: <strong>ACLs disabled</strong> (default)</li>
+    <li>Block Public Access: <strong>leave all four boxes checked</strong></li>
+    <li>Versioning: <strong>Enable</strong></li>
+    <li>Default encryption: SSE-S3 (default)</li>
+    <li>Click <strong>Create bucket</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Upload an Object <span class="time">6 min</span></h2>
+  <ol>
+    <li>Open the bucket → <strong>Upload</strong></li>
+    <li><strong>Add files</strong> → pick a local file (e.g. a text or image file from your Cloud9 tree)</li>
+    <li>Expand <strong>Properties</strong> → note <strong>Content-Type</strong>; change if needed</li>
+    <li>Expand <strong>Metadata</strong> → Add user metadata: key <code>owner</code>, value <code>user1</code></li>
+    <li>Click <strong>Upload</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — Inspect the Object <span class="time">6 min</span></h2>
+  <ol>
+    <li>Click the uploaded object's name</li>
+    <li>Note the <strong>ETag</strong>, <strong>Size</strong>, <strong>Storage class</strong>, <strong>Last modified</strong></li>
+    <li>Scroll to <strong>Metadata</strong> — confirm <code>x-amz-meta-owner: user1</code></li>
+    <li>Click <strong>Object URL</strong> — expect <code>AccessDenied</code> XML (Block Public Access is on)</li>
+    <li>Back on the object page → <strong>Open</strong> — browser opens a pre-signed URL, file downloads</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 4 — Observe Versioning <span class="time">6 min</span></h2>
+  <ol>
+    <li>Re-upload a <em>changed</em> copy of the same file (same key)</li>
+    <li>On the object page → <strong>Versions</strong> tab → you should see 2 versions with different ETags</li>
+    <li>Pick the older version → <strong>Download</strong> → confirm you get the original content</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Try a Forbidden Delete <span class="time">6 min</span></h2>
+  <ol>
+    <li>Navigate to a bucket that isn't yours (e.g., the instructor's <code>staff-</code> prefix)</li>
+    <li>Try <strong>Delete</strong> — read the red error banner</li>
+    <li>Note the action, resource ARN, and principal in the message</li>
+    <li>Back in <em>your</em> bucket, deleting your own object should succeed</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — Empty Your Bucket <span class="time">6 min</span></h2>
+  <ol>
+    <li>Bucket list → select your bucket → <strong>Empty</strong></li>
+    <li>Type <code>permanently delete</code> → <strong>Empty</strong></li>
+    <li>Leave the empty bucket in place — Lab 2b will reuse it</li>
+    <li>Save the name for later:</li>
+  </ol>
+  <pre><code># In the Cloud9 terminal — record the exact name you typed in the Console
+BUCKET=student-$USER_ID-uploads-$(date +%Y%m%d)
+echo "export BUCKET=$BUCKET" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env
+echo $BUCKET    # should match the bucket you just created in the Console</code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ Versioned bucket created in your prefix, BPA on</li>
+    <li>✅ Object uploaded with user metadata visible in the Properties tab</li>
+    <li>✅ Two versions of the same key exist; older version still downloadable</li>
+    <li>✅ A delete outside your prefix fails with a readable error</li>
+    <li>✅ <code>$BUCKET</code> exported for later labs</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

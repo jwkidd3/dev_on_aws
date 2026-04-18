@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 1b — First SDK Call in Cloud9</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · SDK</span>
+  <h1>🧪 Lab 1b</h1>
+  <h3 style="color:#fff">First SDK Call in Cloud9</h3>
+  <p class="small" style="color:#fff">Module 4 — Permissions <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Run your first SDK program from inside Cloud9</li>
+    <li>See the credential provider chain pick up the instance's credentials</li>
+    <li>Create a persistent session file for shell variables</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 1a complete — Cloud9 open, <code>~/environment/dev-on-aws/lab1</code> folder exists</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Pick Your Language <span class="time">6 min</span></h2>
+  <p class="small">All three SDK toolchains are preinstalled in Cloud9. Pick one and stay with it for the week.</p>
+  <ul>
+    <li><strong>Python:</strong> nothing extra — we use <code>boto3</code></li>
+    <li><strong>.NET:</strong> <code>dotnet new console -n smoke</code> in <code>lab1/</code></li>
+    <li><strong>Java:</strong> <code>mvn archetype:generate -DgroupId=c -DartifactId=smoke -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false</code> in <code>lab1/</code></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 2 — Open the Smoke Test File <span class="time">8 min</span></h2>
+  <p class="small">The smoke test files are already on disk (from Lab 1a's sync). Open the one for your language in the Cloud9 editor and review it:</p>
+  <ul>
+    <li><strong>Python:</strong> <code>~/environment/dev-on-aws/lab1/smoke_test.py</code></li>
+    <li><strong>.NET:</strong> <code>~/environment/dev-on-aws/lab1/Program.cs</code> — drop into a new <code>dotnet new console -n smoke</code> project</li>
+    <li><strong>Java:</strong> <code>~/environment/dev-on-aws/lab1/SmokeTest.java</code> — drop into the Maven quickstart archetype's <code>src/main/java/</code></li>
+  </ul>
+  <p class="small">Each prints the caller identity (via STS) — proving the Cloud9 credentials are live without any access keys in code.</p>
+</section>
+
+<section>
+  <h2>Step 3 — Run It <span class="time">6 min</span></h2>
+  <pre><code># Python
+cd ~/environment/dev-on-aws/lab1
+python3 smoke_test.py
+
+# .NET
+cd ~/environment/dev-on-aws/lab1/smoke &amp;&amp; dotnet run
+
+# Java
+cd ~/environment/dev-on-aws/lab1/smoke &amp;&amp; \
+  mvn -q compile exec:java -Dexec.mainClass=SmokeTest</code></pre>
+  <p class="small">No <code>aws configure</code>, no access keys in the code. The SDK walks the provider chain and finds the Cloud9 instance's credentials.</p>
+</section>
+
+<section>
+  <h2>Step 4 — CLI Smoke Tests <span class="time">6 min</span></h2>
+  <pre><code>aws s3 ls
+aws dynamodb list-tables
+aws lambda list-functions</code></pre>
+  <ul>
+    <li>Lists should return (most will be empty — you haven't created anything yet).</li>
+    <li>Some calls may fail with <code>AccessDenied</code> — you'll test denies in Lab 1c.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 5 — Create the Session File <span class="time">7 min</span></h2>
+  <p class="small">Every lab after this one saves variables to <code>~/.dev-on-aws.env</code>. Set it up once — in the Cloud9 terminal:</p>
+  <pre><code>cat &gt; ~/.dev-on-aws.env &lt;&lt;'EOF'
+export AWS_REGION=us-east-1
+export USER_ID=user1    # change to your assigned user
+EOF
+
+# Capture your account ID once — every other lab uses it
+ACCT=$(aws sts get-caller-identity --query Account -o text)
+echo "export ACCT=$ACCT" &gt;&gt; ~/.dev-on-aws.env
+
+echo 'source ~/.dev-on-aws.env' &gt;&gt; ~/.bashrc
+source ~/.dev-on-aws.env
+echo "You are $USER_ID in $AWS_REGION (account $ACCT)"</code></pre>
+  <p class="small">This one is small enough for a terminal heredoc. Re-source with <code>source ~/.dev-on-aws.env</code> if you open a new terminal.</p>
+</section>
+
+<section>
+  <h2>Step 6 — Peek at the Cloud9 AWS Panel <span class="time">3 min</span></h2>
+  <ul>
+    <li>Right sidebar in Cloud9 → <strong>AWS resources</strong> icon</li>
+    <li>Expand <strong>Lambda</strong>, <strong>S3</strong>, <strong>CloudWatch</strong> in the tree</li>
+    <li>You'll use this panel to invoke Lambdas, view logs, and browse S3 later</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ SDK program runs from Cloud9 and prints your IAM user ARN</li>
+    <li>✅ CLI lists S3, DynamoDB, Lambda successfully (mostly empty)</li>
+    <li>✅ <code>~/.dev-on-aws.env</code> created and auto-sourced from <code>.bashrc</code></li>
+    <li>✅ <code>$USER_ID</code> is set to your assigned user</li>
+    <li>✅ Cloud9 AWS panel shows your resources</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 4 — Getting Started with Permissions</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.66em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 4</h1>
+  <h3 class="accent">Getting Started with Permissions</h3>
+  <p class="small">IAM for developers — identities, policies, roles.</p>
+</section>
+
+<section>
+  <h2>The Four Building Blocks</h2>
+  <ul>
+    <li><strong>User</strong> — long-lived identity with credentials (usually a human)</li>
+    <li><strong>Group</strong> — bag of users that share a policy attachment</li>
+    <li><strong>Role</strong> — temporary identity assumed by a service or another account</li>
+    <li><strong>Policy</strong> — JSON document listing what's allowed or denied</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Anatomy of a Policy</h2>
+  <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect":   "Allow",
+    "Action":   ["s3:GetObject", "s3:PutObject"],
+    "Resource": "arn:aws:s3:::my-app-uploads/*"
+  }]
+}</code></pre>
+  <p class="small"><code>Effect</code> · <code>Action</code> · <code>Resource</code> · optional <code>Condition</code>.</p>
+</section>
+
+<section>
+  <h2>How IAM Decides</h2>
+  <ol>
+    <li>Start with implicit <strong>deny</strong></li>
+    <li>Any explicit <strong>Deny</strong> matches → deny. Stop.</li>
+    <li>Any explicit <strong>Allow</strong> matches → allow.</li>
+    <li>Otherwise → deny.</li>
+  </ol>
+  <p class="small">Explicit deny beats everything. Use sparingly but deliberately.</p>
+</section>
+
+<section>
+  <h2>Roles for Code</h2>
+  <ul>
+    <li>Code on AWS (Lambda, EC2, ECS) should <em>never</em> have static keys</li>
+    <li>Attach a <strong>role</strong> — SDK auto-picks up rotating temp credentials</li>
+    <li>Every role has two policies: <strong>permissions</strong> (what it can do) + <strong>trust</strong> (who can assume it)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Least Privilege</h2>
+  <ul>
+    <li>Grant the narrowest <em>actions</em> on the narrowest <em>resources</em></li>
+    <li>Start with an AWS-managed policy if it fits, then trim</li>
+    <li><strong>IAM Access Analyzer</strong> generates a policy from real CloudTrail usage</li>
+    <li><strong>Access Advisor</strong> shows last-used dates per service</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Debugging "Access Denied"</h2>
+  <ol>
+    <li>Read the full error — newer messages name the policy</li>
+    <li><code>aws sts get-caller-identity</code> — confirm <em>which</em> identity</li>
+    <li>Check the region — wrong region looks like missing permission</li>
+    <li>Check resource-based policies (bucket / KMS / queue) too — they can deny</li>
+    <li>Last resort: <strong>IAM Policy Simulator</strong> with the exact action and ARN</li>
+  </ol>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 3 × 45 min</span>
+  <h2>🧪 Labs 1a · 1b · 1c</h2>
+  <ul>
+    <li><strong>1a — Sign In &amp; Console Orientation.</strong> Console, CLI install, role discovery, prefix convention.</li>
+    <li><strong>1b — CLI / SDK Profile.</strong> <code>dev-on-aws</code> profile, first SDK call, IDE AWS Toolkit.</li>
+    <li><strong>1c — IAM Policy Authoring.</strong> Observe AccessDenied, write &amp; attach least-privilege policy, verify.</li>
+  </ul>
+  <p class="small"><code>labs/lab1a-*.html · lab1b-*.html · lab1c-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

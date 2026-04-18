@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 7 — Getting Started with Databases</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.66em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 7</h1>
+  <h3 class="accent">Getting Started with Databases</h3>
+  <p class="small">Amazon DynamoDB — the key/value NoSQL store behind most serverless apps.</p>
+</section>
+
+<section>
+  <h2>Why DynamoDB</h2>
+  <ul>
+    <li>Managed — no servers, patches, or backups to run yourself</li>
+    <li>Single-digit millisecond reads and writes at any scale</li>
+    <li>On-demand or provisioned capacity — your choice</li>
+    <li>Native integrations with Lambda, Streams, Kinesis</li>
+  </ul>
+</section>
+
+<section>
+  <h2>SQL Instincts to Unlearn</h2>
+  <ul>
+    <li>No <code>JOIN</code> — model access patterns, not entities</li>
+    <li>No schema — items in one table can have different attributes</li>
+    <li>No ad-hoc queries — query by primary key or an index</li>
+    <li>Transactions exist (max 100 items) but are not the default</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Keys</h2>
+  <ul>
+    <li>Every table has a <strong>primary key</strong></li>
+    <li>Simple: <strong>partition key</strong> only</li>
+    <li>Composite: <strong>partition key + sort key</strong></li>
+    <li>Partition key picks the shard; sort key orders items in a partition</li>
+    <li>High-cardinality partition keys (user IDs) are safe — low-cardinality ones get "hot"</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Item Anatomy</h2>
+  <pre><code>{
+  "pk":     "USER#user1",
+  "sk":     "ITEM#2026-04-16T14:02Z",
+  "title":  "Blue widget",
+  "price":  19.95,
+  "tags":   ["blue", "widget"],
+  "inStock": true
+}</code></pre>
+  <p class="small">Max item size 400 KB — store blobs in S3 and keep the key in DynamoDB.</p>
+</section>
+
+<section>
+  <h2>Indexes</h2>
+  <ul>
+    <li><strong>GSI</strong> — any partition + sort key, async replication, eventual reads</li>
+    <li><strong>LSI</strong> — same partition key as table, different sort, set at create time</li>
+    <li>Indexes cost capacity — only build the ones your access patterns need</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Connecting</h2>
+  <pre><code># Python — low level
+ddb = boto3.client("dynamodb")
+
+# Python — resource (typed values)
+table = boto3.resource("dynamodb").Table("Items")
+
+# Java v2 — enhanced (object mapper)
+DynamoDbEnhancedClient enh =
+   DynamoDbEnhancedClient.builder()
+       .dynamoDbClient(DynamoDbClient.create()).build();</code></pre>
+  <p class="small">Pick one layer per module of your code. Mixing them gets confusing fast.</p>
+</section>
+
+<section>
+  <h2>Common Exceptions</h2>
+  <ul>
+    <li><strong>ResourceNotFoundException</strong> — table or index missing</li>
+    <li><strong>ConditionalCheckFailedException</strong> — your <code>ConditionExpression</code> didn't match</li>
+    <li><strong>ProvisionedThroughputExceededException</strong> — throttled; back off</li>
+    <li><strong>ValidationException</strong> — wrong types or missing keys</li>
+  </ul>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 8 — turning these concepts into real CRUD with the mid- and high-level APIs.</p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

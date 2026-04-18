@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 7a — Instrument Lambda with X-Ray</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🔍 Lab 7a</h1>
+  <h3 style="color:#fff">Instrument Lambda with X-Ray</h3>
+  <p class="small" style="color:#fff">Module 14 — Observability <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Add the X-Ray SDK to the Lambda package</li>
+    <li>Turn on active tracing on the Lambda and API Gateway stage</li>
+    <li>Add annotations (<code>user</code>, <code>method</code>) and metadata</li>
+    <li>Grant the X-Ray daemon write permission</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 4a–4b, 5a–5b, 6a–6c complete</li>
+    <li>Function <code>lab4-user1</code> deployed, API live, ID token available</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Add the SDK <span class="time">8 min</span></h2>
+  <pre><code># Your Lab 4b handler lives here
+cd ~/environment/dev-on-aws/lab4
+ls handler.py   # confirm file exists from Lab 4b
+
+pip install aws-xray-sdk -t .       # vendor into the package
+echo "aws-xray-sdk" &gt; requirements.txt</code></pre>
+  <p class="small">.NET: <code>AWSXRayRecorder.Handlers.AwsSdk</code> NuGet. Java: <code>aws-xray-recorder-sdk-aws-sdk-v2</code>.</p>
+</section>
+
+<section>
+  <h2>Step 2 — Swap in the Instrumented Handler <span class="time">7 min</span></h2>
+  <p class="small">The X-Ray-instrumented handler is already on disk at <code>~/environment/dev-on-aws/lab7/python/handler.py</code>. Overwrite the Lab 4 version with it:</p>
+  <pre><code>cp ~/environment/dev-on-aws/lab7/python/handler.py \
+   ~/environment/dev-on-aws/lab4/handler.py</code></pre>
+  <p class="small">Open either file in the editor to read. Highlights:</p>
+  <ul>
+    <li><code>patch_all()</code> — auto-wraps every <code>boto3</code> call as an X-Ray subsegment</li>
+    <li><code>@xray_recorder.capture("handler")</code> — adds a named span for the handler itself</li>
+    <li><strong>Annotations</strong> (<code>user</code>, <code>method</code>) — indexed, filterable from the X-Ray console</li>
+    <li><strong>Metadata</strong> (<code>event</code>) — not indexed; shown inline when you open a trace</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 3 — Turn on Tracing <span class="time">7 min</span></h2>
+  <pre><code>aws lambda update-function-configuration \
+    --function-name lab4-$USER_ID \
+    --tracing-config Mode=Active 
+
+aws iam attach-role-policy \
+    --role-name StudentLambdaRole-$USER_ID \
+    --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess 
+
+aws apigateway update-stage \
+    --rest-api-id $API_ID --stage-name dev \
+    --patch-operations op=replace,path=/tracingEnabled,value=true </code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Redeploy &amp; Fire <span class="time">7 min</span></h2>
+  <pre><code>cd ~/environment/dev-on-aws/lab4
+zip -r function.zip handler.py aws_xray_sdk/ wrapt/ requirements.txt
+
+aws lambda update-function-code \
+    --function-name lab4-$USER_ID \
+    --zip-file fileb://function.zip
+
+for i in $(seq 1 20); do
+  curl -s -H "Authorization: $ID_TOKEN" -X POST $URL \
+       -H "Content-Type: application/json" \
+       -d "{\"title\":\"t$i\",\"price\":$i.00}" &gt; /dev/null
+done</code></pre>
+</section>
+
+<section>
+  <h2>Step 5 — First Look at X-Ray <span class="time">7 min</span></h2>
+  <ol>
+    <li>CloudWatch console → <strong>X-Ray traces</strong> → <strong>Service map</strong></li>
+    <li>Should appear: client → API Gateway → Lambda → DynamoDB / S3</li>
+    <li>Click Lambda node → see response-time histogram</li>
+    <li>Click a trace → see segments and subsegments</li>
+  </ol>
+  <p class="small">We'll dig deeper in Lab 7c.</p>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ <code>aws-xray-sdk</code> packaged into the deploy artifact</li>
+    <li>✅ Lambda <code>TracingConfig.Mode = Active</code></li>
+    <li>✅ <code>AWSXRayDaemonWriteAccess</code> attached to the role</li>
+    <li>✅ API GW stage <code>tracingEnabled = true</code></li>
+    <li>✅ X-Ray console shows at least one end-to-end trace</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

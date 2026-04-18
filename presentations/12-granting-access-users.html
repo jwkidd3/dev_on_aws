@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 12 — Granting Access to Your Application Users</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 12</h1>
+  <h3 class="accent">Granting Access to Your Application Users</h3>
+  <p class="small">Amazon Cognito — sign-up, sign-in, JWTs.</p>
+</section>
+
+<section>
+  <h2>Don't Roll Your Own</h2>
+  <ul>
+    <li>Password hashing, MFA, password reset, email verification — all easy to subtly break</li>
+    <li>Account recovery and lockout are regulatory minefields</li>
+    <li>Social IdPs need constant protocol updates</li>
+    <li>Use a managed service. Cognito, Auth0, Okta — pick one.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Cognito — Two Pieces</h2>
+  <ul>
+    <li><strong>User Pool</strong> — directory; sign-up, sign-in, MFA, JWT issuance</li>
+    <li><strong>Identity Pool</strong> — exchanges an ID token for temp AWS credentials (browser → AWS direct)</li>
+    <li>Most apps need only a user pool</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What a JWT Looks Like</h2>
+  <pre><code>eyJhbGciOiJSUzI1NiIs...   header
+.
+eyJzdWIiOiJ1c2VyMSIs...   payload  (sub, email, exp, aud, iss)
+.
+MXp1ZVZ0ZGN...            signature</code></pre>
+  <ul>
+    <li>Three Base64-encoded sections joined by dots</li>
+    <li>Payload is readable — never put secrets in a JWT</li>
+    <li>Signature verifies the token wasn't tampered with</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Tokens Cognito Issues</h2>
+  <ul>
+    <li><strong>ID token</strong> — identity claims (<code>sub</code>, <code>email</code>, custom attrs)</li>
+    <li><strong>Access token</strong> — scoped permissions; what your API trusts</li>
+    <li><strong>Refresh token</strong> — exchanged for new access/ID without re-login</li>
+    <li>Default lifetimes: ID/access 1 h, refresh 30 d (configurable per app client)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>OAuth Flow to Use</h2>
+  <ul>
+    <li><strong>Authorization Code + PKCE</strong> — the right flow for SPAs and mobile</li>
+    <li><strong>Client Credentials</strong> — machine-to-machine; no user</li>
+    <li>Avoid Implicit (deprecated) and Resource-Owner-Password (legacy)</li>
+    <li>Hosted UI gives you sign-up / sign-in pages out of the box</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Protecting API Gateway</h2>
+  <ul>
+    <li>Attach a <strong>Cognito User Pool authorizer</strong> to each method</li>
+    <li>API GW validates signature, expiry, audience</li>
+    <li>Claims forwarded to Lambda via <code>event.requestContext.authorizer.claims</code></li>
+    <li>Unauthenticated → 401; unauthorized → 403</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Best Practices</h2>
+  <ul>
+    <li><strong>Authorization Code + PKCE</strong> for browser apps</li>
+    <li>Never store tokens in <code>localStorage</code> — in-memory or http-only cookie</li>
+    <li>MFA on for privileged accounts; optional for the rest</li>
+    <li>Turn on <strong>advanced security</strong> for compromised-credential detection</li>
+    <li>Use Lambda triggers sparingly — each is a failure mode in your sign-in path</li>
+  </ul>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Capstone Lab Block · 3 × 45 min</span>
+  <h2>🎓 Labs 6a · 6b · 6c</h2>
+  <ul>
+    <li><strong>6a — Cognito User Pool &amp; JWT.</strong> Create pool + client, add user via CLI, decode the token.</li>
+    <li><strong>6b — Authorizer &amp; Swagger Import.</strong> Attach Cognito authorizer, overwrite the API from a Swagger file.</li>
+    <li><strong>6c — Frontend End-to-End.</strong> Wire <code>config.js</code>, sync to site bucket, sign in, CRUD from the browser.</li>
+  </ul>
+  <p class="small"><code>labs/lab6a-*.html · lab6b-*.html · lab6c-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

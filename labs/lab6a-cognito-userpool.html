@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 6a — Cognito in the Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>🎓 Lab 6a</h1>
+  <h3 style="color:#fff">Cognito in the Console</h3>
+  <p class="small" style="color:#fff">Module 12 — Access <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Create a Cognito user pool using the Console wizard</li>
+    <li>Create an SPA app client (no secret, PKCE flow)</li>
+    <li>Add a user and set a permanent password</li>
+    <li>Use the CLI to sign in and get a JWT; decode it</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 1–5 complete</li>
+    <li><code>jq</code> available in Cloud9 (already installed)</li>
+    <li>AWS Console tab open</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the User Pool <span class="time">6 min</span></h2>
+  <ol>
+    <li>Console → <strong>Cognito</strong> → <strong>Create user pool</strong></li>
+    <li><strong>Configure sign-in experience:</strong> sign-in options = <strong>Email</strong></li>
+    <li><strong>Configure security requirements:</strong> password policy defaults; MFA = <strong>No MFA</strong> (class-only)</li>
+    <li><strong>Configure sign-up experience:</strong> self-registration off; required attributes = <code>email</code></li>
+    <li><strong>Configure message delivery:</strong> <strong>Send email with Cognito</strong></li>
+    <li><strong>Integrate your app:</strong> user pool name <code>dev-on-aws-user1</code></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Create the App Client <span class="time">5 min</span></h2>
+  <ol>
+    <li>Still in the wizard: <strong>App client name</strong> = <code>web</code></li>
+    <li>Client type: <strong>Public client</strong> (no secret — SPA / mobile)</li>
+    <li>Authentication flows: check <strong>ALLOW_USER_PASSWORD_AUTH</strong> and <strong>ALLOW_REFRESH_TOKEN_AUTH</strong></li>
+    <li>Click through → <strong>Create user pool</strong></li>
+    <li>On the pool's page, copy the <strong>User pool ID</strong> and the app client's <strong>Client ID</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — Save the IDs <span class="time">5 min</span></h2>
+  <pre><code># Cloud9 terminal
+cat &gt;&gt; ~/.dev-on-aws.env &lt;&lt;EOF
+export POOL_ID=us-east-1_XXXXXXXXX
+export CLIENT_ID=abcdefghijklmnopqrstuv
+EOF
+source ~/.dev-on-aws.env</code></pre>
+  <p class="small">Replace the placeholders with the real IDs from the console.</p>
+</section>
+
+<section>
+  <h2>Step 4 — Add a User (Console) <span class="time">5 min</span></h2>
+  <ol>
+    <li>User pool → <strong>Users</strong> tab → <strong>Create user</strong></li>
+    <li>Invitation: <strong>Don't send an invitation</strong></li>
+    <li>Email: <code>alice@example.com</code> — check <strong>Mark email as verified</strong></li>
+    <li>Temporary password: <code>Tr0picalStorm!</code></li>
+    <li><strong>Create user</strong> → user appears with status <em>Force change password</em></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Set a Permanent Password (CLI) <span class="time">5 min</span></h2>
+  <pre><code>aws cognito-idp admin-set-user-password \
+  --user-pool-id $POOL_ID \
+  --username alice@example.com \
+  --password 'Tr0picalStorm!' \
+  --permanent</code></pre>
+  <p class="small">The console can't set a permanent password without an email round-trip. The CLI can — useful in a shared account.</p>
+</section>
+
+<section>
+  <h2>Step 6 — Sign In, Get a JWT <span class="time">5 min</span></h2>
+  <pre><code>TOKENS=$(aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id $CLIENT_ID \
+  --auth-parameters USERNAME=alice@example.com,PASSWORD='Tr0picalStorm!')
+
+ID_TOKEN=$(echo $TOKENS | jq -r .AuthenticationResult.IdToken)
+echo "export ID_TOKEN=$ID_TOKEN" &gt;&gt; ~/.dev-on-aws.env</code></pre>
+</section>
+
+<section>
+  <h2>Step 7 — Decode the Payload <span class="time">5 min</span></h2>
+  <pre><code>echo $ID_TOKEN | cut -d. -f2 | base64 -d 2&gt;/dev/null | jq .</code></pre>
+  <p class="small">Expected claims:</p>
+  <ul>
+    <li><code>sub</code> — the user's unique ID (what your app keys data on)</li>
+    <li><code>email</code> — <code>alice@example.com</code></li>
+    <li><code>iss</code> — the Cognito URL for your pool</li>
+    <li><code>aud</code> — your app client ID</li>
+    <li><code>exp</code> — 1 hour from now</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ User pool <code>dev-on-aws-user1</code> visible in the Console</li>
+    <li>✅ Public app client <code>web</code> created; no secret</li>
+    <li>✅ User <code>alice@example.com</code> confirmed, permanent password set</li>
+    <li>✅ <code>initiate-auth</code> returns an <code>IdToken</code></li>
+    <li>✅ Decoded payload shows <code>sub</code>, <code>email</code>, <code>iss</code>, <code>aud</code>, <code>exp</code></li>
+    <li>✅ <code>$POOL_ID</code>, <code>$CLIENT_ID</code>, <code>$ID_TOKEN</code> exported</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

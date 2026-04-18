@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 14 — Observing Your Application</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 14</h1>
+  <h3 class="accent">Observing Your Application</h3>
+  <p class="small">Monitoring, observability, CloudWatch, X-Ray.</p>
+</section>
+
+<section>
+  <h2>Monitoring vs. Observability</h2>
+  <ul>
+    <li><strong>Monitoring</strong> — "is this known metric above/below a threshold?"</li>
+    <li><strong>Observability</strong> — "what is this system doing right now?" — investigate without shipping new code</li>
+    <li>Monitoring answers predictable questions. Observability answers the weird ones.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Three Pillars</h2>
+  <ul>
+    <li><strong>Metrics</strong> — numbers over time. Cheap, fast.</li>
+    <li><strong>Logs</strong> — text events. Richer, more expensive.</li>
+    <li><strong>Traces</strong> — the path of one request across every service it touched, with timings</li>
+  </ul>
+  <p class="small">Good systems use all three. Each answers a different question.</p>
+</section>
+
+<section>
+  <h2>Structured Logging</h2>
+  <pre><code>log.info(json.dumps({
+  "request_id": ctx.aws_request_id,
+  "user_id":    user_id,
+  "action":     "create_item",
+  "duration_ms": 42
+}))</code></pre>
+  <ul>
+    <li>JSON logs → CloudWatch Logs Insights queries them as structured data</li>
+    <li>Always include a correlation/request ID</li>
+    <li>Never log PII or tokens</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Alarms That Matter</h2>
+  <ul>
+    <li>API Gateway <code>5XXError</code> &gt; 1% for 5 min</li>
+    <li>Lambda <code>Errors</code> &gt; 0 for 2 datapoints</li>
+    <li>DynamoDB <code>ThrottledRequests</code> &gt; 0</li>
+    <li>SQS <code>ApproximateAgeOfOldestMessage</code> &gt; N seconds</li>
+    <li>Alarm on <em>symptoms users notice</em>, not on every metric</li>
+  </ul>
+</section>
+
+<section>
+  <h2>AWS X-Ray</h2>
+  <ul>
+    <li>Distributed tracing across Lambda, API GW, DynamoDB, S3</li>
+    <li>Service map shows the shape of your app visually</li>
+    <li>Trace ID propagates through HTTP headers and Lambda context</li>
+    <li>Pay per trace recorded; sample aggressively in production</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Enabling X-Ray</h2>
+  <pre><code>from aws_xray_sdk.core import xray_recorder, patch_all
+patch_all()  # auto-instrument boto3, requests, etc.
+
+@xray_recorder.capture("process_item")
+def process_item(event):
+    xray_recorder.put_annotation("user", event["user"])
+    # ...</code></pre>
+  <ul>
+    <li>API GW + Lambda: one toggle each (<code>Tracing: Active</code> in SAM)</li>
+    <li>Add <code>AWSXRayDaemonWriteAccess</code> to the function's role</li>
+    <li><strong>Annotations</strong> are indexed (filterable); <strong>metadata</strong> isn't</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Four Golden Signals</h2>
+  <ul>
+    <li><strong>Latency</strong> — how long requests take</li>
+    <li><strong>Traffic</strong> — how many requests there are</li>
+    <li><strong>Errors</strong> — how many are failing</li>
+    <li><strong>Saturation</strong> — how full the system is</li>
+  </ul>
+  <p class="small">Start here for every service. Everything else is a sub-question.</p>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 2 × 45 min</span>
+  <h2>🔍 Labs 7a · 7b</h2>
+  <ul>
+    <li><strong>7a — Instrument with X-Ray.</strong> SDK, annotations, active tracing on Lambda + API GW.</li>
+    <li><strong>7b — SAM, Trace Map &amp; Cleanup.</strong> One-command deploy, iterate, service map review, <code>sam delete</code>.</li>
+  </ul>
+  <p class="small"><code>labs/lab7a-*.html · lab7b-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

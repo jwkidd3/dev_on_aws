@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 9 — Processing Your Application Logic</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 9</h1>
+  <h3 class="accent">Processing Your Application Logic</h3>
+  <p class="small">AWS Lambda — functions, triggers, packaging, deployment.</p>
+</section>
+
+<section>
+  <h2>What Lambda Is</h2>
+  <ul>
+    <li>Managed compute that runs your code in response to an event</li>
+    <li>You hand AWS a zip or container; AWS handles servers</li>
+    <li>Pay for ms of execution + invocations — no idle cost</li>
+    <li>Up to 15 min, up to 10 GB of memory</li>
+    <li>First 1M invocations and 400k GB-sec free every month</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Anatomy of a Handler</h2>
+  <pre><code># Python
+def handler(event, context):
+    user_id = event["requestContext"]["authorizer"]["claims"]["sub"]
+    body    = json.loads(event["body"])
+    # ... business logic ...
+    return {"statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"id": item_id})}</code></pre>
+  <p class="small"><strong>event</strong> shape depends on the trigger. <strong>context</strong> has request ID, deadline, log group.</p>
+</section>
+
+<section>
+  <h2>Invocation Models</h2>
+  <ul>
+    <li><strong>Synchronous</strong> — caller waits (API Gateway, ALB, CLI)</li>
+    <li><strong>Asynchronous</strong> — Lambda queues, retries on failure (S3, SNS, EventBridge)</li>
+    <li><strong>Poll-based</strong> — Lambda reads from a stream / queue (SQS, Kinesis, DynamoDB Streams)</li>
+    <li>Error handling differs per model — know which one your trigger uses</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Permissions: Two-Sided</h2>
+  <ul>
+    <li><strong>Execution role</strong> — what your code is allowed to do (DynamoDB, S3, etc.)</li>
+    <li><strong>Resource policy</strong> — who is allowed to <em>invoke</em> your Lambda (API GW, S3, EventBridge)</li>
+    <li>Always include <code>AWSLambdaBasicExecutionRole</code> for CloudWatch Logs</li>
+    <li>Use a role per function — no shared "AppRole"</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Configuration Knobs</h2>
+  <ul>
+    <li><strong>Memory</strong> 128 MB – 10 GB; CPU scales with memory</li>
+    <li><strong>Timeout</strong> 1 s – 15 min</li>
+    <li><strong>Ephemeral /tmp</strong> up to 10 GB</li>
+    <li><strong>Environment variables</strong> — config (table names, log level); use Secrets Manager for actual secrets</li>
+    <li><strong>Concurrency</strong> — unreserved (default), reserved (cap), provisioned (pre-warmed)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Versions, Aliases, &amp; Cold Starts</h2>
+  <ul>
+    <li><strong>Version</strong> — immutable snapshot; <strong>alias</strong> — named pointer to a version</li>
+    <li>Weighted aliases enable canary deploys (95% old / 5% new)</li>
+    <li>Rollback = repoint the alias</li>
+    <li><strong>Cold starts</strong> happen on a new environment — worst on Java/.NET; mitigate with smaller packages, Provisioned Concurrency, SnapStart</li>
+    <li>Init outside the handler — runs once per environment</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Anti-Patterns</h2>
+  <ul>
+    <li>Initializing clients inside the handler</li>
+    <li>Long polling loops — use SQS / EventBridge / Step Functions instead</li>
+    <li>Packaging the dev toolchain into the deploy zip</li>
+    <li>Hard-coded ARNs / endpoints — use env vars or Parameter Store</li>
+    <li>No idempotency — async retries will hurt</li>
+  </ul>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 2 × 45 min</span>
+  <h2>⚡ Labs 4a · 4b</h2>
+  <ul>
+    <li><strong>4a — Create &amp; Deploy.</strong> Execution role, hello-world zip, <code>create-function</code>, invoke + read logs.</li>
+    <li><strong>4b — DynamoDB + S3 + Triggers.</strong> Least-privilege policy, presigned URLs, S3 event, version + alias.</li>
+  </ul>
+  <p class="small"><code>labs/lab4a-*.html · lab4b-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

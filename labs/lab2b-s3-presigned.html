@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 2b — Presigned URLs & Processing Pipeline</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🗂️ Lab 2b</h1>
+  <h3 style="color:#fff">Presigned URLs &amp; Processing Pipeline</h3>
+  <p class="small" style="color:#fff">Module 6 — Storage <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Do from <strong>code</strong> what Lab 2a did in the Console — PUT, GET, metadata</li>
+    <li>Build a round-trip pipeline: download → transform → upload back</li>
+    <li>Generate a presigned GET URL; verify expiry behavior</li>
+    <li>Generate a presigned PUT URL; upload via <code>curl</code> only</li>
+    <li>Paginate through a prefix</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Lab 2a complete — empty bucket <code>student-user1-uploads-&lt;today&gt;</code> exists</li>
+    <li><code>$BUCKET</code> set in <code>~/.dev-on-aws.env</code></li>
+    <li>Working in Cloud9 terminal — no profile needed</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Seed the Pipeline <span class="time">8 min</span></h2>
+  <pre><code>import boto3, os
+s3 = boto3.client("s3")
+BUCKET = os.environ["BUCKET"]
+
+for i in range(5):
+    s3.put_object(
+        Bucket=BUCKET,
+        Key=f"inbox/item-{i:02d}.txt",
+        Body=f"message {i}".encode(),
+        ContentType="text/plain",
+        Metadata={"owner": "user1"}
+    )</code></pre>
+</section>
+
+<section>
+  <h2>Step 2 — Process with a Paginator <span class="time">7 min</span></h2>
+  <pre><code>paginator = s3.get_paginator("list_objects_v2")
+count = 0
+for page in paginator.paginate(Bucket=BUCKET, Prefix="inbox/"):
+    for obj in page.get("Contents", []):
+        resp = s3.get_object(Bucket=BUCKET, Key=obj["Key"])
+        body = resp["Body"].read().decode().upper()
+        out_key = obj["Key"].replace("inbox/", "outbox/")
+        s3.put_object(
+            Bucket=BUCKET, Key=out_key, Body=body.encode(),
+            ContentType="text/plain",
+            Metadata={**resp["Metadata"], "stage": "processed"}
+        )
+        count += 1
+print(f"processed {count} objects")</code></pre>
+</section>
+
+<section>
+  <h2>Step 3 — Presigned GET <span class="time">7 min</span></h2>
+  <pre><code>url = s3.generate_presigned_url(
+    "get_object",
+    Params={"Bucket": BUCKET, "Key": "outbox/item-00.txt"},
+    ExpiresIn=60
+)
+print(url)</code></pre>
+  <ul>
+    <li>Open the URL in a browser — you should see <code>MESSAGE 0</code></li>
+    <li>Wait 61 seconds, reload — expect <code>AccessDenied</code> XML</li>
+    <li>Treat presigned URLs like bearer tokens while valid</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 4 — Presigned PUT <span class="time">7 min</span></h2>
+  <pre><code>put_url = s3.generate_presigned_url(
+    "put_object",
+    Params={"Bucket": BUCKET, "Key": "uploads/user1/note.txt",
+            "ContentType": "text/plain"},
+    ExpiresIn=600
+)
+print(put_url)</code></pre>
+  <pre><code># From your terminal — no AWS creds involved
+echo "from curl" &gt; /tmp/note.txt
+curl -X PUT -H "Content-Type: text/plain" \
+     --upload-file /tmp/note.txt "$put_url"</code></pre>
+  <p class="small">Browsers use the same pattern — S3 receives the bytes directly; your API never sees them.</p>
+</section>
+
+<section>
+  <h2>Step 5 — Verify <span class="time">7 min</span></h2>
+  <pre><code>aws s3 ls s3://$BUCKET/ --recursive
+aws s3api get-object --bucket $BUCKET \
+    --key uploads/user1/note.txt /tmp/round-trip.txt 
+cat /tmp/round-trip.txt</code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ 5 objects in <code>inbox/</code>, 5 matching objects in <code>outbox/</code></li>
+    <li>✅ Presigned GET works inside the window, fails after expiry</li>
+    <li>✅ Presigned PUT accepts an upload from <code>curl</code> with no AWS creds</li>
+    <li>✅ Paginator iterated all objects without manual token management</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

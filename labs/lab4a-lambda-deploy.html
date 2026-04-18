@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 4a — Lambda in the Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>⚡ Lab 4a</h1>
+  <h3 style="color:#fff">Lambda in the Console</h3>
+  <p class="small" style="color:#fff">Module 9 — Application Logic <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Create a Lambda function through the AWS Console wizard</li>
+    <li>Edit the handler in the in-browser code editor</li>
+    <li>Configure memory, timeout, and an environment variable</li>
+    <li>Run a test event; read the CloudWatch log output</li>
+  </ul>
+  <p class="small">Lab 4b does this same work from Cloud9 and the CLI.</p>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 1a–1c complete</li>
+    <li>AWS Console tab open</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the Function &amp; Role <span class="time">6 min</span></h2>
+  <ol>
+    <li>Console → <strong>Lambda</strong> → <strong>Create function</strong></li>
+    <li>Choose <strong>Author from scratch</strong></li>
+    <li>Function name: <code>lab4-user1</code></li>
+    <li>Runtime: <strong>Python 3.12</strong> (or .NET 8 / Java 17 — pick your language)</li>
+    <li>Architecture: <strong>arm64</strong></li>
+    <li>Permissions → expand <strong>Change default execution role</strong> →
+        <strong>Create a new role from AWS policy templates</strong>
+      <ul>
+        <li>Role name: <code>StudentLambdaRole-user1</code></li>
+        <li>Policy templates: leave empty (Lambda adds the basic execution policy for CloudWatch Logs automatically)</li>
+      </ul>
+    </li>
+    <li><strong>Create function</strong> — Lambda creates both the function and the role. Lab 4b adds DynamoDB / S3 permissions to this same role.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Edit the Handler <span class="time">6 min</span></h2>
+  <p class="small">The console opens at the <strong>Code</strong> tab with a default <code>lambda_function.py</code>. Replace its contents:</p>
+  <pre><code>import json, os
+
+def lambda_handler(event, context):
+    greeting = os.environ.get("GREETING", "Hello")
+    name     = event.get("name", "World")
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "message":   f"{greeting}, {name}!",
+            "requestId": context.aws_request_id
+        })
+    }</code></pre>
+  <p class="small">Click <strong>Deploy</strong> (the orange button). This uploads the edited code.</p>
+</section>
+
+<section>
+  <h2>Step 3 — Configure Memory, Timeout, Env Vars <span class="time">6 min</span></h2>
+  <ol>
+    <li>Switch to the <strong>Configuration</strong> tab</li>
+    <li><strong>General configuration</strong> → Edit → Memory <strong>256 MB</strong>, Timeout <strong>10 sec</strong> → <strong>Save</strong></li>
+    <li><strong>Environment variables</strong> → Edit → Add <code>GREETING = Hi</code> → <strong>Save</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 4 — Test Event <span class="time">6 min</span></h2>
+  <ol>
+    <li>Switch to the <strong>Test</strong> tab</li>
+    <li>Event name: <code>hello-user1</code></li>
+    <li>Payload JSON: <code>{"name":"user1"}</code></li>
+    <li>Click <strong>Test</strong></li>
+    <li>Expected response status 200; body contains <code>"Hi, user1!"</code></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Read the Logs <span class="time">6 min</span></h2>
+  <ol>
+    <li><strong>Monitor</strong> tab → <strong>View CloudWatch logs</strong></li>
+    <li>You should see a log group <code>/aws/lambda/lab4-user1</code> with one stream</li>
+    <li>Open the stream; note <code>INIT_START</code>, <code>START</code>, <code>END</code>, <code>REPORT</code> lines</li>
+    <li>The <code>REPORT</code> line has duration, memory used, and billed ms</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — Invoke from Cloud9 Terminal <span class="time">6 min</span></h2>
+  <pre><code>aws lambda invoke \
+    --function-name lab4-$USER_ID \
+    --payload '{"name":"Cloud9"}' \
+    --cli-binary-format raw-in-base64-out \
+    out.json
+
+cat out.json
+# {"statusCode":200,"body":"{\"message\":\"Hi, Cloud9!\",...}"}</code></pre>
+  <p class="small">Refresh the logs in the console — a second stream appears.</p>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ Function <code>lab4-user1</code> created through the Console wizard</li>
+    <li>✅ Handler edited inline and deployed</li>
+    <li>✅ Env var <code>GREETING=Hi</code> takes effect in the response</li>
+    <li>✅ Test event returns 200; CloudWatch log stream visible</li>
+    <li>✅ CLI invoke from Cloud9 hits the same function</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 6b — API Gateway Authorizer & Swagger Import</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.64em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🎓 Lab 6b</h1>
+  <h3 style="color:#fff">API Gateway Authorizer &amp; Swagger Import</h3>
+  <p class="small" style="color:#fff">Module 12 — Access <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Attach a Cognito user pool authorizer to the API from Lab 5</li>
+    <li>Verify that no-token and valid-token calls behave correctly</li>
+    <li>Replace the hand-built resources with a Swagger import</li>
+    <li>Redeploy and smoke-test every method</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 5a, 6a complete</li>
+    <li><code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$POOL_ID</code>, <code>$ID_TOKEN</code>, <code>$ACCT</code>, <code>$LAMBDA_ARN</code> all exported</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the Authorizer <span class="time">8 min</span></h2>
+  <pre><code>AUTH_ID=$(aws apigateway create-authorizer \
+  --rest-api-id $API_ID \
+  --name cognito-$USER_ID \
+  --type COGNITO_USER_POOLS \
+  --identity-source method.request.header.Authorization \
+  --provider-arns arn:aws:cognito-idp:us-east-1:$ACCT:userpool/$POOL_ID \
+  --query id -o text)
+
+echo $AUTH_ID</code></pre>
+</section>
+
+<section>
+  <h2>Step 2 — Attach to POST <span class="time">7 min</span></h2>
+  <pre><code>aws apigateway update-method \
+  --rest-api-id $API_ID --resource-id $ITEMS_ID \
+  --http-method POST \
+  --patch-operations \
+    op=replace,path=/authorizationType,value=COGNITO_USER_POOLS \
+    op=replace,path=/authorizerId,value=$AUTH_ID 
+
+aws apigateway create-deployment \
+  --rest-api-id $API_ID --stage-name dev</code></pre>
+</section>
+
+<section>
+  <h2>Step 3 — Verify Auth <span class="time">7 min</span></h2>
+  <pre><code># No token → 401
+curl -i -X POST $URL \
+     -H "Content-Type: application/json" \
+     -d '{"user":"u","title":"x","price":1}'
+
+# Valid token → 200
+curl -i -X POST $URL \
+     -H "Authorization: $ID_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"user":"alice","title":"authed","price":9.99}'
+
+# Malformed token → 401
+curl -i -X POST $URL -H "Authorization: not.a.token" \
+     -d '{"user":"u","title":"x","price":1}'</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Add GET &amp; DELETE via Script <span class="time">7 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab6/add_methods.sh</code> in the editor to read what it does: adds GET on <code>/items</code>, creates the <code>/items/{id}</code> child resource, adds GET + DELETE there, deploys the stage. All protected by <code>$AUTH_ID</code> (from Step 1).</p>
+  <p class="small">Terminal:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab6
+chmod +x add_methods.sh
+./add_methods.sh
+# Deployed.</code></pre>
+  <p class="small">Running a saved script (not pasting 25 lines into the terminal) is the reliable way to execute multi-line bash in Cloud9.</p>
+</section>
+
+<section>
+  <h2>Step 5 — Smoke Test All Methods <span class="time">7 min</span></h2>
+  <pre><code>H="-H Authorization:$ID_TOKEN"
+curl -s $H $URL | jq .                           # GET list
+curl -s $H -X POST $URL \
+  -H "Content-Type: application/json" \
+  -d '{"title":"from swagger","price":4.50}' | jq .   # POST
+curl -s $H $URL/ITEM-123 | jq .                  # GET one
+curl -s $H -X DELETE $URL/ITEM-123 -i             # DELETE</code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ Authorizer created and attached to POST</li>
+    <li>✅ No-token → 401, valid-token → 200</li>
+    <li>✅ All four methods (POST, GET /items, GET /items/{id}, DELETE /items/{id}) wired to Lambda with the Cognito authorizer</li>
+    <li>✅ All four methods respond under the <code>dev</code> stage</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

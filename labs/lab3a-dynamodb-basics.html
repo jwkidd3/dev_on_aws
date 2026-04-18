@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 3a — DynamoDB in the Console</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.65em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <h1>🗄️ Lab 3a</h1>
+  <h3 style="color:#fff">DynamoDB in the Console</h3>
+  <p class="small" style="color:#fff">Module 8 — Databases <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">2 min</span></h2>
+  <ul>
+    <li>Create the <code>Items-userN</code> table and its <code>byCategory</code> GSI</li>
+    <li>Add items through the console's item editor</li>
+    <li>Run a Query using the table's Explore view</li>
+    <li>Run a Scan with a filter and observe the capacity cost</li>
+    <li>Use PartiQL from the console's query editor</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">2 min</span></h2>
+  <ul>
+    <li>Labs 1a–1c complete</li>
+    <li>AWS Console tab open</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the Table <span class="time">4 min</span></h2>
+  <ol>
+    <li>Console search: <strong>DynamoDB</strong> → <strong>Tables</strong> → <strong>Create table</strong></li>
+    <li>Table name: <code>Items-user1</code> (replace with your user)</li>
+    <li>Partition key: <code>pk</code> (String)</li>
+    <li>Sort key: <code>sk</code> (String)</li>
+    <li>Table settings: <strong>Default settings</strong> (on-demand billing)</li>
+    <li><strong>Create table</strong> — wait ~20 s for status <em>Active</em></li>
+    <li>Open the table → <strong>Indexes</strong> tab → <strong>Create index</strong></li>
+    <li>Index name: <code>byCategory</code>; partition <code>category</code> (String); sort <code>price</code> (Number); projection <strong>All</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 2 — Add an Item (Form) <span class="time">5 min</span></h2>
+  <ol>
+    <li><strong>Explore table items</strong> → <strong>Create item</strong></li>
+    <li>Form view — fill in <code>pk = USER#user1</code>, <code>sk = ITEM#001</code></li>
+    <li>Click <strong>Add new attribute</strong> → String → <code>title = Blue widget</code></li>
+    <li>Add: <code>category</code> (String, <code>widgets</code>), <code>price</code> (Number, <code>19.95</code>), <code>inStock</code> (Boolean, true)</li>
+    <li><strong>Create item</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — Add an Item (JSON) <span class="time">5 min</span></h2>
+  <ol>
+    <li><strong>Create item</strong> → toggle <strong>JSON view</strong></li>
+    <li>Paste the JSON on the next slide</li>
+    <li><strong>Create item</strong></li>
+    <li>Click the new <code>ITEM#002</code> row to confirm the typed attributes (<code>S</code>, <code>N</code>, <code>BOOL</code>, <code>SS</code>)</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 3 — JSON Payload <span class="time">5 min</span></h2>
+  <pre><code>{
+  "pk":       { "S": "USER#$USER_ID" },
+  "sk":       { "S": "ITEM#002" },
+  "title":    { "S": "Red gadget" },
+  "category": { "S": "gadgets" },
+  "price":    { "N": "29.00" },
+  "inStock":  { "BOOL": false },
+  "tags":     { "SS": ["red", "gadget"] }
+}</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Run a Query <span class="time">5 min</span></h2>
+  <ol>
+    <li>Explore view → switch from <em>Scan</em> to <strong>Query</strong></li>
+    <li>Partition key: <code>pk = USER#user1</code></li>
+    <li>Sort key: <code>begins_with ITEM#</code></li>
+    <li><strong>Run</strong></li>
+    <li>Scroll right — the returned <em>Read capacity units</em> tells you what the query cost</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Scan + Filter <span class="time">5 min</span></h2>
+  <ol>
+    <li>Switch to <strong>Scan</strong></li>
+    <li>Add filter: <code>category = widgets</code></li>
+    <li><strong>Run</strong></li>
+    <li>Note the time taken and RCU used compared to the Query</li>
+    <li>This is the "scan cost" lesson you'll remember every time you design a table</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — PartiQL in the Console <span class="time">5 min</span></h2>
+  <ol>
+    <li>Left nav → <strong>PartiQL editor</strong></li>
+    <li>Paste the statement on the next slide and <strong>Run</strong></li>
+    <li>Try an UPDATE to change ITEM#001's price to 17.50</li>
+    <li>Re-query to see the change</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — PartiQL Statement <span class="time">5 min</span></h2>
+  <pre><code>SELECT sk, title, price
+FROM   "Items-$USER_ID"
+WHERE  pk = 'USER#$USER_ID'
+  AND  begins_with(sk, 'ITEM#')</code></pre>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">2 min</span></h2>
+  <ul>
+    <li>✅ Table schema + <code>byCategory</code> GSI understood</li>
+    <li>✅ ITEM#001 and ITEM#002 created through the console (form + JSON)</li>
+    <li>✅ Query returns both items; Scan + filter returns a subset</li>
+    <li>✅ Difference in RCU between Query and Scan noted</li>
+    <li>✅ PartiQL SELECT + UPDATE executed from the console</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

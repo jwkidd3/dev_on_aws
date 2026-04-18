@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 7b — Full App with SAM</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.63em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🔍 Lab 7b</h1>
+  <h3 style="color:#fff">Full App with SAM</h3>
+  <p class="small" style="color:#fff">Module 13 — Deployment <span class="time">55 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">4 min</span></h2>
+  <ul>
+    <li>Review a SAM template that covers the whole app</li>
+    <li><code>sam build</code> + <code>sam deploy --guided</code> into a fresh stack</li>
+    <li>Make a code change and redeploy in place</li>
+    <li>Inspect the generated CloudFormation stack</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">4 min</span></h2>
+  <ul>
+    <li>Lab 7a complete — <code>~/environment/dev-on-aws/lab4/handler.py</code> is X-Ray-instrumented</li>
+    <li>SAM CLI installed (<code>sam --version</code>)</li>
+    <li><code>$POOL_ID</code>, <code>$CLIENT_ID</code>, <code>$BUCKET</code> exported</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Review the SAM Project <span class="time">8 min</span></h2>
+  <p class="small">The SAM project is already on disk. Explore it in the Cloud9 file tree:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab7
+ls -R
+# template.yaml
+# python/handler.py   (same X-Ray-instrumented handler from Lab 7a)</code></pre>
+  <p class="small">Open <code>template.yaml</code> in the editor. Notice:</p>
+  <ul>
+    <li><strong>Parameters</strong> — pool/client IDs and bucket passed in at deploy time; no hard-coding</li>
+    <li><strong>Globals</strong> — <code>Tracing: Active</code> enables X-Ray on every function in the stack</li>
+    <li><strong>Api</strong> — <code>HttpApi</code> with a Cognito JWT authorizer wired from parameters</li>
+    <li><strong>ItemsFn.Policies</strong> — SAM-managed policy templates grant scoped DDB + S3 + X-Ray</li>
+    <li><strong>Events</strong> — <code>Method: ANY</code> on <code>/items</code> routes every HTTP verb to this Lambda</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 2 — Build &amp; First Deploy <span class="time">7 min</span></h2>
+  <pre><code>cd ~/environment/dev-on-aws/lab7
+sam build
+
+sam deploy --guided \
+    --stack-name dev-on-aws-$USER_ID \
+    --region us-east-1
+# Parameters:
+#   CognitoPoolId   = $POOL_ID
+#   CognitoClientId = $CLIENT_ID
+#   UploadsBucket   = $BUCKET   (from Lab 2a)
+# Confirm IAM changes: y
+# Save arguments to samconfig.toml: y</code></pre>
+  <p class="small">Creates an S3 bucket for artifacts (prefixed <code>aws-sam-cli-managed-default-</code>) on first use — acceptable in shared accounts.</p>
+</section>
+
+<section>
+  <h2>Step 3 — Smoke the New Stack <span class="time">7 min</span></h2>
+  <pre><code>API_URL=$(aws cloudformation describe-stacks \
+  --stack-name dev-on-aws-$USER_ID \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" -o text )
+
+curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
+     -H "Content-Type: application/json" \
+     -d '{"title":"sam item","price":1.23}' | jq .</code></pre>
+</section>
+
+<section>
+  <h2>Step 4 — Iterate <span class="time">7 min</span></h2>
+  <ol>
+    <li>Edit <code>python/handler.py</code> — e.g., add a new log line or annotation</li>
+    <li><code>sam build &amp;&amp; sam deploy</code> (no <code>--guided</code>; reuses saved params)</li>
+    <li>Change takes ~30 s to apply</li>
+    <li>Invoke again, confirm new behavior in CloudWatch logs</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 5 — Peek at CloudFormation &amp; X-Ray <span class="time">7 min</span></h2>
+  <ol>
+    <li>CloudFormation console → <code>dev-on-aws-$USER_ID</code> → <strong>Resources</strong> tab — every Lambda, table, role, permission</li>
+    <li><strong>Events</strong> tab — the deploy timeline</li>
+    <li>Fire 10 test requests, then open CloudWatch → <strong>X-Ray traces</strong> → <strong>Service map</strong></li>
+    <li>Confirm: client → API GW → ItemsFn → DynamoDB</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 6 — Tear Down <span class="time">7 min</span></h2>
+  <pre><code>sam delete --stack-name dev-on-aws-$USER_ID --region us-east-1
+# Confirm y when prompted
+
+aws cloudformation describe-stacks --stack-name dev-on-aws-$USER_ID
+# → Stack does not exist</code></pre>
+  <p class="small">Removes every resource SAM created. Your Cognito pool, S3 site bucket, and pre-Lab-7 Lambda/API stay put — Module 15 has the full cleanup checklist.</p>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">4 min</span></h2>
+  <ul>
+    <li>✅ Stack reached <code>CREATE_COMPLETE</code> / <code>UPDATE_COMPLETE</code></li>
+    <li>✅ POST to the SAM-managed API URL returned 200 with your JWT</li>
+    <li>✅ Code-change redeploy completed in &lt; 1 min with observable difference</li>
+    <li>✅ X-Ray service map shows the full request path</li>
+    <li>✅ <code>sam delete</code> removed the entire stack cleanly</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

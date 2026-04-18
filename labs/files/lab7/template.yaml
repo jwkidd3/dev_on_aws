@@ -1,0 +1,60 @@
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  CognitoPoolId:   { Type: String }
+  CognitoClientId: { Type: String }
+  UploadsBucket:   { Type: String }
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    Tracing: Active
+    Timeout: 15
+
+Resources:
+  ItemsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      # TableName omitted on purpose — CloudFormation auto-generates a name
+      # derived from the stack name (dev-on-aws-userN), keeping it unique per
+      # student in the shared account. ItemsFn references it via !Ref.
+      PrimaryKey: { Name: pk, Type: String }
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      Auth:
+        Authorizers:
+          Cognito:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              audience: [!Ref CognitoClientId]
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoPoolId}"
+        DefaultAuthorizer: Cognito
+
+  ItemsFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      CodeUri: python/
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref ItemsTable }
+        - S3CrudPolicy:       { BucketName: !Ref UploadsBucket }
+        - AWSXRayDaemonWriteAccess
+      Environment:
+        Variables:
+          ITEMS_TABLE:    !Ref ItemsTable
+          UPLOADS_BUCKET: !Ref UploadsBucket
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /items
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod"

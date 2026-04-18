@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 6c — Frontend Wire-Up & End-to-End Test</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; }
+  .reveal h1 { font-size: 2em; }
+  .reveal h2 { font-size: 1.4em; }
+  .reveal h3 { font-size: 1.05em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul, .reveal ol { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.62em; line-height:1.35; }
+  .reveal .small { font-size: 0.72em; color:#555; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.55em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
+    letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
+    background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide" data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 45 min</span>
+  <h1>🎓 Lab 6c</h1>
+  <h3 style="color:#fff">Frontend &amp; End-to-End Test</h3>
+  <p class="small" style="color:#fff">Module 12 — Access <span class="time">45 min</span></p>
+</section>
+
+<section>
+  <h2>Objectives <span class="time">3 min</span></h2>
+  <ul>
+    <li>Host a minimal static frontend on S3</li>
+    <li>Prove end-to-end via <code>curl</code> from Cloud9 (sign-in → API → DynamoDB)</li>
+    <li>Demonstrate per-user isolation with a second Cognito user</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Prerequisites <span class="time">3 min</span></h2>
+  <ul>
+    <li>Labs 6a and 6b complete</li>
+    <li><code>$POOL_ID</code>, <code>$CLIENT_ID</code>, <code>$URL</code>, <code>$ID_TOKEN</code> exported</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Step 1 — Create the Site Bucket <span class="time">6 min</span></h2>
+  <pre><code>SITE=student-user1-site-$(date +%Y%m%d)
+aws s3 mb s3://$SITE
+
+aws s3api put-public-access-block --bucket $SITE \
+    --public-access-block-configuration \
+    "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
+aws s3 website s3://$SITE/ --index-document index.html --error-document error.html
+
+echo "export SITE=$SITE" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env</code></pre>
+</section>
+
+<section>
+  <h2>Step 2 — Public-Read + Deny-HTTP Policy <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab6/site-policy.json</code> in the editor. Find/replace the three literal <code>BUCKET</code> tokens with your <code>$SITE</code> value (e.g., <code>student-user1-site-20260417</code>). Save.</p>
+  <p class="small">Terminal: apply it.</p>
+  <pre><code>aws s3api put-bucket-policy --bucket $SITE \
+    --policy file://~/environment/dev-on-aws/lab6/site-policy.json</code></pre>
+</section>
+
+<section>
+  <h2>Step 3 — Minimal Landing Page <span class="time">5 min</span></h2>
+  <p class="small">The landing page and 404 page are already on disk under <code>~/environment/dev-on-aws/lab6/web/</code>. Open them in the editor if you want to customize. Then sync:</p>
+  <pre><code>aws s3 sync ~/environment/dev-on-aws/lab6/web s3://$SITE/ --delete
+echo "http://$SITE.s3-website-us-east-1.amazonaws.com"</code></pre>
+  <p class="small">Open the URL in a browser — confirm the page renders.</p>
+</section>
+
+<section>
+  <h2>Step 4 — Create via API <span class="time">5 min</span></h2>
+  <pre><code># ID_TOKEN still valid from Lab 6a (1-hour lifetime)
+H="-H Authorization:$ID_TOKEN"
+
+curl -s $H -X POST $URL \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Alice widget","price":9.99}' | jq .</code></pre>
+  <p class="small">Expect a 200 response with the item's presigned URL or ID from your Lambda.</p>
+</section>
+
+<section>
+  <h2>Step 5 — List &amp; Delete <span class="time">5 min</span></h2>
+  <pre><code># GET — list items for the authenticated user
+curl -s $H $URL | jq .
+
+# Confirm the row in DynamoDB
+aws dynamodb scan --table-name Items-$USER_ID \
+   --filter-expression "pk = :p" \
+   --expression-attribute-values '{":p":{"S":"USER#'"$(echo $ID_TOKEN | cut -d. -f2 | base64 -d 2&gt;/dev/null | jq -r .sub)"'"}}'
+
+# DELETE — /items/{id} endpoint (replace with a real sk value you just created)
+curl -s $H -X DELETE "$URL/ITEM-123" -i</code></pre>
+</section>
+
+<section>
+  <h2>Step 6 — Per-User Isolation <span class="time">6 min</span></h2>
+  <pre><code># Create a second user (bob)
+aws cognito-idp admin-create-user --user-pool-id $POOL_ID \
+  --username bob@example.com \
+  --user-attributes Name=email,Value=bob@example.com Name=email_verified,Value=true \
+  --message-action SUPPRESS
+aws cognito-idp admin-set-user-password --user-pool-id $POOL_ID \
+  --username bob@example.com --password 'Tr0picalStorm!' --permanent
+
+# Get Bob's JWT
+BOB_TOKEN=$(aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH --client-id $CLIENT_ID \
+  --auth-parameters USERNAME=bob@example.com,PASSWORD='Tr0picalStorm!' \
+  | jq -r .AuthenticationResult.IdToken)
+
+# Bob GETs — should see NOTHING (no Alice items)
+curl -s -H "Authorization:$BOB_TOKEN" $URL | jq .</code></pre>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Discussion <span class="time">3 min</span></h2>
+  <ul>
+    <li>Where did per-user isolation actually happen — the frontend, API Gateway, or the Lambda?</li>
+    <li>What breaks if the JWT expires mid-session? How does the client recover?</li>
+    <li>When would you add CloudFront + OAC in front of the site bucket?</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <ul>
+    <li>✅ Site bucket serves a minimal landing page</li>
+    <li>✅ Authenticated POST / GET / DELETE work from Cloud9 <code>curl</code></li>
+    <li>✅ DynamoDB shows items keyed on the Cognito <code>sub</code></li>
+    <li>✅ Bob's token returns an empty item list — per-user isolation proven</li>
+  </ul>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>

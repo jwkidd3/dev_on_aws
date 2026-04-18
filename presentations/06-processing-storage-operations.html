@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 6 — Processing Your Storage Operations</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root { --aws-orange:#FF9900; --aws-navy:#232F3E; --aws-blue:#146EB4; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--aws-navy); font-weight: 600; letter-spacing: -0.5px; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: var(--aws-blue); }
+  .reveal section { text-align: left; }
+  .reveal section.title-slide { text-align: center; }
+  .reveal .accent { color: var(--aws-orange); }
+  .reveal ul { line-height: 1.5; }
+  .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
+  .reveal pre code { display:block; padding:10px 14px; font-size:0.66em; line-height:1.35; }
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+<section class="title-slide">
+  <h1>Module 6</h1>
+  <h3 class="accent">Processing Your Storage Operations</h3>
+  <p class="small">Large objects, listing at scale, and presigned URLs.</p>
+</section>
+
+<section>
+  <h2>Operations Worth Knowing</h2>
+  <ul>
+    <li><strong>Bucket:</strong> Create / Delete, Versioning, Lifecycle, Notifications, Policy</li>
+    <li><strong>Object:</strong> Put / Get / Delete / Head, Copy, ListV2 (paginated), DeleteObjects (batch)</li>
+    <li>Every SDK call takes a request object and returns a typed response</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Large Objects → Multipart</h2>
+  <ul>
+    <li>Single PUT caps at 5 GB — multipart handles anything larger</li>
+    <li>Use the SDK's <strong>Transfer Manager</strong> — multipart + parallel + resumable</li>
+    <li>Python <code>s3.upload_file</code>, Java <code>S3TransferManager</code>, .NET <code>TransferUtility</code></li>
+    <li>Always add a lifecycle rule to abort incomplete uploads after 7 days</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Presigned URLs</h2>
+  <pre><code>url = s3.generate_presigned_url(
+    "put_object",
+    Params={"Bucket": "acme-uploads-dev",
+            "Key": f"uploads/{user_id}/photo.jpg"},
+    ExpiresIn=600)</code></pre>
+  <ul>
+    <li>Time-limited URL for one specific S3 operation</li>
+    <li>Browser uploads directly to S3 — your API never sees the bytes</li>
+    <li>Treat the URL like a bearer token while it's valid</li>
+  </ul>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 2 × 45 min</span>
+  <h2>🗂️ Labs 2a · 2b</h2>
+  <ul>
+    <li><strong>2a — S3 in the Console.</strong> Bucket wizard, metadata, versioning, error handling.</li>
+    <li><strong>2b — S3 via SDK.</strong> Round-trip pipeline, paginator, presigned GET + PUT URLs.</li>
+  </ul>
+  <p class="small">Static-site hosting moves into Lab 6c (capstone frontend).</p>
+  <p class="small"><code>labs/lab2a-*.html · lab2b-*.html</code></p>
+</section>
+
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>Reveal.initialize({ hash: true, slideNumber: 'c/t', transition: 'fade', width: 1280, height: 800, margin: 0.04, minScale: 0.2, maxScale: 2.0 });</script>
+</body>
+</html>
