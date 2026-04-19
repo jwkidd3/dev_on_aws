@@ -50,7 +50,7 @@
   <ul>
     <li>Single PUT caps at 5 GB — multipart handles anything larger</li>
     <li>Use the SDK's <strong>Transfer Manager</strong> — multipart + parallel + resumable</li>
-    <li>Python <code>s3.upload_file</code>, Java <code>S3TransferManager</code>, .NET <code>TransferUtility</code></li>
+    <li>In <code>boto3</code>: <code>s3.upload_file()</code> handles multipart automatically</li>
     <li>Always add a lifecycle rule to abort incomplete uploads after 7 days</li>
   </ul>
 </section>

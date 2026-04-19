@@ -37,14 +37,14 @@
 <div class="reveal"><div class="slides">
 
 <section class="title-slide" data-background-color="#FF9900">
-  <span class="lab-tag">Hands-On Lab · 45 min · SDK</span>
+  <span class="lab-tag">Hands-On Lab · 35 min · SDK</span>
   <h1>🧪 Lab 1b</h1>
   <h3 style="color:#fff">First SDK Call in Cloud9</h3>
-  <p class="small" style="color:#fff">Module 4 — Permissions <span class="time">45 min</span></p>
+  <p class="small" style="color:#fff">Module 3 — SDKs &amp; CLI <span class="time">35 min</span></p>
 </section>
 
 <section>
-  <h2>Objectives <span class="time">3 min</span></h2>
+  <h2>Objectives <span class="time">2 min</span></h2>
   <ul>
     <li>Run your first SDK program from inside Cloud9</li>
     <li>See the credential provider chain pick up the instance's credentials</li>
@@ -60,43 +60,25 @@
 </section>
 
 <section>
-  <h2>Step 1 — Pick Your Language <span class="time">6 min</span></h2>
-  <p class="small">All three SDK toolchains are preinstalled in Cloud9. Pick one and stay with it for the week.</p>
+  <h2>Step 1 — Review smoke_test.py <span class="time">7 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab1/smoke_test.py</code> in the Cloud9 editor. It's the tiniest SDK program that proves your credentials are live:</p>
   <ul>
-    <li><strong>Python:</strong> nothing extra — we use <code>boto3</code></li>
-    <li><strong>.NET:</strong> <code>dotnet new console -n smoke</code> in <code>lab1/</code></li>
-    <li><strong>Java:</strong> <code>mvn archetype:generate -DgroupId=c -DartifactId=smoke -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false</code> in <code>lab1/</code></li>
+    <li>Imports <code>boto3</code> (preinstalled in Cloud9)</li>
+    <li>Calls <code>sts:GetCallerIdentity</code> and prints the ARN</li>
+    <li>Calls <code>s3:ListBuckets</code> and prints bucket names</li>
   </ul>
+  <p class="small">No <code>aws configure</code>, no access keys in the code — the SDK finds the Cloud9 instance's credentials via the provider chain.</p>
 </section>
 
 <section>
-  <h2>Step 2 — Open the Smoke Test File <span class="time">8 min</span></h2>
-  <p class="small">The smoke test files are already on disk (from Lab 1a's sync). Open the one for your language in the Cloud9 editor and review it:</p>
-  <ul>
-    <li><strong>Python:</strong> <code>~/environment/dev-on-aws/lab1/smoke_test.py</code></li>
-    <li><strong>.NET:</strong> <code>~/environment/dev-on-aws/lab1/Program.cs</code> — drop into a new <code>dotnet new console -n smoke</code> project</li>
-    <li><strong>Java:</strong> <code>~/environment/dev-on-aws/lab1/SmokeTest.java</code> — drop into the Maven quickstart archetype's <code>src/main/java/</code></li>
-  </ul>
-  <p class="small">Each prints the caller identity (via STS) — proving the Cloud9 credentials are live without any access keys in code.</p>
+  <h2>Step 2 — Run It <span class="time">6 min</span></h2>
+  <pre><code>cd ~/environment/dev-on-aws/lab1
+python3 smoke_test.py</code></pre>
+  <p class="small">Expected output: your IAM user ARN plus the names of any buckets the account owns.</p>
 </section>
 
 <section>
-  <h2>Step 3 — Run It <span class="time">6 min</span></h2>
-  <pre><code># Python
-cd ~/environment/dev-on-aws/lab1
-python3 smoke_test.py
-
-# .NET
-cd ~/environment/dev-on-aws/lab1/smoke &amp;&amp; dotnet run
-
-# Java
-cd ~/environment/dev-on-aws/lab1/smoke &amp;&amp; \
-  mvn -q compile exec:java -Dexec.mainClass=SmokeTest</code></pre>
-  <p class="small">No <code>aws configure</code>, no access keys in the code. The SDK walks the provider chain and finds the Cloud9 instance's credentials.</p>
-</section>
-
-<section>
-  <h2>Step 4 — CLI Smoke Tests <span class="time">6 min</span></h2>
+  <h2>Step 3 — CLI Smoke Tests <span class="time">5 min</span></h2>
   <pre><code>aws s3 ls
 aws dynamodb list-tables
 aws lambda list-functions</code></pre>
@@ -107,7 +89,7 @@ aws lambda list-functions</code></pre>
 </section>
 
 <section>
-  <h2>Step 5 — Create the Session File <span class="time">7 min</span></h2>
+  <h2>Step 4 — Create the Session File <span class="time">7 min</span></h2>
   <p class="small">Every lab after this one saves variables to <code>~/.dev-on-aws.env</code>. Set it up once — in the Cloud9 terminal:</p>
   <pre><code>cat &gt; ~/.dev-on-aws.env &lt;&lt;'EOF'
 export AWS_REGION=us-east-1
@@ -125,7 +107,7 @@ echo "You are $USER_ID in $AWS_REGION (account $ACCT)"</code></pre>
 </section>
 
 <section>
-  <h2>Step 6 — Peek at the Cloud9 AWS Panel <span class="time">3 min</span></h2>
+  <h2>Step 5 — Peek at the Cloud9 AWS Panel <span class="time">3 min</span></h2>
   <ul>
     <li>Right sidebar in Cloud9 → <strong>AWS resources</strong> icon</li>
     <li>Expand <strong>Lambda</strong>, <strong>S3</strong>, <strong>CloudWatch</strong> in the tree</li>
@@ -134,7 +116,7 @@ echo "You are $USER_ID in $AWS_REGION (account $ACCT)"</code></pre>
 </section>
 
 <section>
-  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <h2>Success Criteria <span class="time">2 min</span></h2>
   <ul>
     <li>✅ SDK program runs from Cloud9 and prints your IAM user ARN</li>
     <li>✅ CLI lists S3, DynamoDB, Lambda successfully (mostly empty)</li>

@@ -87,17 +87,13 @@
 </section>
 
 <section>
-  <h2>Connecting</h2>
-  <pre><code># Python — low level
+  <h2>Connecting (Two Layers)</h2>
+  <pre><code># Low-level client — one method per DynamoDB operation; attributes carry
+# type tags like {"S": "..."} and {"N": "..."}
 ddb = boto3.client("dynamodb")
 
-# Python — resource (typed values)
-table = boto3.resource("dynamodb").Table("Items")
-
-# Java v2 — enhanced (object mapper)
-DynamoDbEnhancedClient enh =
-   DynamoDbEnhancedClient.builder()
-       .dynamoDbClient(DynamoDbClient.create()).build();</code></pre>
+# Resource interface — typed Python values, less verbose
+table = boto3.resource("dynamodb").Table("Items")</code></pre>
   <p class="small">Pick one layer per module of your code. Mixing them gets confusing fast.</p>
 </section>
 

@@ -97,7 +97,7 @@ def handler(event, context):
     <li><strong>Version</strong> — immutable snapshot; <strong>alias</strong> — named pointer to a version</li>
     <li>Weighted aliases enable canary deploys (95% old / 5% new)</li>
     <li>Rollback = repoint the alias</li>
-    <li><strong>Cold starts</strong> happen on a new environment — worst on Java/.NET; mitigate with smaller packages, Provisioned Concurrency, SnapStart</li>
+    <li><strong>Cold starts</strong> happen on a new environment — usually fine for Python; mitigate with smaller packages or Provisioned Concurrency</li>
     <li>Init outside the handler — runs once per environment</li>
   </ul>
 </section>

@@ -37,37 +37,28 @@
 <div class="reveal"><div class="slides">
 
 <section class="title-slide" data-background-color="#FF9900">
-  <span class="lab-tag">Hands-On Lab · 45 min · Console</span>
+  <span class="lab-tag">Hands-On Lab · 25 min · Console</span>
   <h1>🧪 Lab 1a</h1>
   <h3 style="color:#fff">Sign In &amp; Create Your Cloud9 Environment</h3>
-  <p class="small" style="color:#fff">Module 4 — Permissions <span class="time">45 min</span></p>
+  <p class="small" style="color:#fff">Day 1 — Environment Setup <span class="time">25 min</span></p>
 </section>
 
 <section>
-  <h2>AWS Account Access <span class="time">3 min</span></h2>
+  <h2>Objectives &amp; Access <span class="time">3 min</span></h2>
   <ul>
-    <li><strong>Console:</strong> <code>https://kiddcorp.signin.aws.amazon.com/console</code></li>
-    <li><strong>Username:</strong> <code>user1</code>, <code>user2</code>, … — instructor assigns</li>
-    <li><strong>Password:</strong> handed out separately</li>
-    <li><strong>Region:</strong> <code>us-east-1</code></li>
-  </ul>
-</section>
-
-<section>
-  <h2>Objectives <span class="time">3 min</span></h2>
-  <ul>
-    <li>Sign into the class account as your assigned user</li>
+    <li>Sign into the class account</li>
     <li>Create your own Cloud9 IDE (m5.large, SSH)</li>
-    <li>Confirm the AWS CLI + SDKs work from the Cloud9 terminal</li>
-    <li>Learn the "editor for files, terminal for commands" convention used all week</li>
+    <li>Clone the course repo and verify the files landed</li>
   </ul>
+  <p class="small"><strong>Console:</strong> <code>https://kiddcorp.signin.aws.amazon.com/console</code><br>
+  <strong>User:</strong> <code>user1</code>, <code>user2</code>, … assigned at class start · <strong>Region:</strong> <code>us-east-1</code></p>
 </section>
 
 <section>
-  <h2>Step 1 — Sign In <span class="time">3 min</span></h2>
+  <h2>Step 1 — Sign In <span class="time">2 min</span></h2>
   <ol>
     <li>Open the console URL in an incognito window</li>
-    <li>Enter your assigned username (e.g., <code>user1</code>) and password</li>
+    <li>Sign in with your assigned user and password</li>
     <li>Top-right region selector → <strong>US East (N. Virginia) us-east-1</strong></li>
   </ol>
 </section>
@@ -76,79 +67,52 @@
   <h2>Step 2 — Create Your Cloud9 Environment <span class="time">10 min</span></h2>
   <ol>
     <li>Console search → <strong>Cloud9</strong> → <strong>Create environment</strong></li>
-    <li>Name: <code>dev-on-aws-user1</code> (replace <code>user1</code> with your assigned user)</li>
+    <li>Name: <code>dev-on-aws-user1</code> (replace with your user)</li>
     <li>Environment type: <strong>New EC2 instance</strong></li>
     <li>Instance type: <strong>m5.large</strong></li>
     <li>Platform: <strong>Amazon Linux 2023</strong></li>
-    <li>Timeout: <strong>30 minutes</strong> (saves cost when idle)</li>
-    <li>Connection: <strong>Secure Shell (SSH)</strong> ← important, do not pick SSM</li>
-    <li>Network settings: default VPC, any public subnet in <code>us-east-1</code></li>
-    <li><strong>Create</strong> — provisioning takes ~3 minutes</li>
+    <li>Timeout: <strong>30 minutes</strong></li>
+    <li>Connection: <strong>Secure Shell (SSH)</strong> ← not SSM</li>
+    <li>Network: default VPC, any public subnet</li>
+    <li><strong>Create</strong> — provisioning takes ~3 min</li>
   </ol>
 </section>
 
 <section>
-  <h2>Step 3 — Open Cloud9 &amp; Smoke Test <span class="time">8 min</span></h2>
-  <ol>
-    <li>Wait for environment status to go from <em>Creating</em> to <em>Available</em></li>
-    <li>Click <strong>Open</strong> — the IDE loads in a new browser tab</li>
-    <li>Bottom pane is the terminal. Run:</li>
-  </ol>
-  <pre><code>aws --version          # expect aws-cli/2.x
-python3 --version
-git --version
-jq --version
+  <h2>Step 3 — Open Cloud9 &amp; Smoke Test <span class="time">4 min</span></h2>
+  <p class="small">Once status is <em>Available</em>, click <strong>Open</strong>. In the Cloud9 terminal (bottom pane):</p>
+  <pre><code>aws --version
 aws sts get-caller-identity
-# Arn: arn:aws:iam::...:user/user1   ← confirms your IAM identity</code></pre>
+# Arn: arn:aws:iam::...:user/user1 ← confirms your IAM identity</code></pre>
+  <p class="small">Credentials come from the Cloud9 instance — no <code>aws configure</code> needed.</p>
 </section>
 
 <section>
-  <h2>Step 4 — Clone the Course Repo <span class="time">4 min</span></h2>
-  <p class="small">Each lab has supporting files (handlers, SAM templates, helper scripts) on GitHub. Clone once, copy the supporting files into your working directory, reuse all week.</p>
+  <h2>Step 4 — Clone the Course Repo &amp; Verify <span class="time">4 min</span></h2>
   <pre><code>cd ~/environment
 git clone https://github.com/jwkidd3/dev_on_aws
 cp -r dev_on_aws/labs/files ./dev-on-aws
 
-# Verify — every MISS below means subsequent labs will break, raise hand
+# Verify — raise your hand if any line shows MISS
 cd ~/environment/dev-on-aws
 for f in lab1/smoke_test.py lab3/seed.py lab4/handler.py \
          lab4/lambda-perms.json lab6/add_methods.sh \
          lab7/python/handler.py lab7/template.yaml; do
   [ -f "$f" ] &amp;&amp; echo "OK   $f" || echo "MISS $f"
 done</code></pre>
-  <p class="small">Every line should say <code>OK</code>. If any say <code>MISS</code>, the clone didn't land — raise your hand before continuing. <code>~/environment</code> is Cloud9's persistent EBS home, so you only run this once.</p>
 </section>
 
 <section>
-  <h2>Step 5 — Editor vs. Terminal (Class Convention) <span class="time">5 min</span></h2>
-  <p class="small">Throughout the course:</p>
+  <h2>Success Criteria <span class="time">2 min</span></h2>
   <ul>
-    <li><strong>Source files</strong> — already on disk from Step 4. Open in the Cloud9 editor to read, edit, or adjust placeholders (e.g., replace <code>ACCT</code> with your account ID). Save with <strong>⌘S</strong> / <strong>Ctrl+S</strong>.</li>
-    <li><strong>Commands to run</strong> — short snippets (≤ ~5 lines) pasted into the <strong>Cloud9 terminal</strong>. Anything larger lives as a file (see above) and is invoked by name.</li>
-    <li>Never paste multi-line source into a shell prompt — terminals mangle indentation, quotes, and tabs.</li>
+    <li>✅ Cloud9 <code>dev-on-aws-userN</code> created on <strong>m5.large</strong> with <strong>SSH</strong></li>
+    <li>✅ <code>aws sts get-caller-identity</code> returns your IAM user ARN</li>
+    <li>✅ All 7 verify lines show <code>OK</code></li>
   </ul>
-</section>
-
-<section>
-  <h2>Step 6 — Prefix Convention <span class="time">5 min</span></h2>
-  <p class="small">Every resource you create today must start with your user prefix:</p>
-  <ul>
-    <li>S3 buckets: <code>student-user1-*</code></li>
-    <li>DynamoDB tables: <code>Items-user1</code></li>
-    <li>Lambda functions: <code>lab4-user1</code>, <code>lab7-user1</code></li>
-    <li>IAM policies you create: <code>Student*-user1</code></li>
-  </ul>
-  <p class="small">The policies attached to your <code>user1</code> IAM user enforce this prefix. Off-prefix actions return <code>AccessDenied</code>.</p>
-</section>
-
-<section>
-  <h2>Success Criteria <span class="time">4 min</span></h2>
-  <ul>
-    <li>✅ Logged into the AWS console as your assigned user, region <code>us-east-1</code></li>
-    <li>✅ Cloud9 environment <code>dev-on-aws-userN</code> created on <strong>m5.large</strong> with <strong>SSH</strong> connection</li>
-    <li>✅ Cloud9 IDE opens; terminal responds; <code>aws sts get-caller-identity</code> returns your IAM user ARN</li>
-    <li>✅ Course files synced into <code>~/environment/dev-on-aws/</code> (visible in the Cloud9 file tree)</li>
-    <li>✅ You can state the editor-vs-terminal convention and the resource-prefix convention</li>
+  <p class="small">Class conventions — shown now, enforced in later labs:</p>
+  <ul class="small">
+    <li><strong>Resource prefix:</strong> everything you create starts with your user — <code>student-user1-*</code>, <code>Items-user1</code>, <code>lab4-user1</code>. IAM enforces this; off-prefix actions return <code>AccessDenied</code>.</li>
+    <li><strong>Editor vs. terminal:</strong> source/config files are authored in the Cloud9 editor; commands ≤ ~5 lines go into the terminal.</li>
   </ul>
 </section>
 

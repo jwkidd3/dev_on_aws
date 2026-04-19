@@ -7,7 +7,7 @@ A 3-day, introductory-level, **lab-heavy** workshop for developers who want to b
 Software developers, solution architects, and IT professionals with:
 
 - AWS Technical Essentials-level knowledge or equivalent
-- Working programming experience in **Python**, **.NET (C#)**, or **Java**
+- Working programming experience in **Python**
 
 ## Format
 
@@ -55,18 +55,18 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | 09:35 – 09:55 | [M3 — Getting Started with Development on AWS](presentations/03-getting-started-development.html) | 20 min |
 | 09:55 – 10:10 | *Break*                                          | 15 min |
 | 10:10 – 10:30 | [M4 — Getting Started with Permissions](presentations/04-getting-started-permissions.html) | 20 min |
-| 10:30 – 11:15 | **[Lab 1a — Sign In, Cloud9 & Orientation](labs/lab1a-signin-orientation.html)** | 45 min |
-| 11:15 – 12:00 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 45 min |
-| 12:00 – 13:00 | *Lunch*                                          | 60 min |
-| 13:00 – 13:45 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
-| 13:45 – 13:57 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
-| 13:57 – 14:10 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
-| 14:10 – 14:25 | *Break*                                          | 15 min |
-| 14:25 – 15:10 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
-| 15:10 – 15:55 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
-| 15:55 – 16:00 | *Day-1 wrap / Q&A*                                | 5 min  |
+| 10:30 – 10:55 | **[Lab 1a — Sign In & Create Your Cloud9 Environment](labs/lab1a-signin-orientation.html)** | 25 min |
+| 10:55 – 11:30 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 35 min |
+| 11:30 – 12:15 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
+| 12:15 – 13:15 | *Lunch*                                          | 60 min |
+| 13:15 – 13:27 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
+| 13:27 – 13:40 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
+| 13:40 – 13:55 | *Break*                                          | 15 min |
+| 13:55 – 14:40 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
+| 14:40 – 15:25 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
+| 15:25 – 16:00 | *Day-1 wrap / Q&A*                                | 35 min |
 
-**Day 1 totals:** lecture 100 min · lab 225 min · **lab share 69%**
+**Day 1 totals:** lecture 100 min · lab 195 min · **lab share 66%**
 
 ### Day 2 — Data & Logic
 
@@ -113,9 +113,9 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | Metric                     | Time           |
 | -------------------------- | -------------- |
 | Lecture (15 modules)       | 4h 35m         |
-| **Hands-on lab (15 labs)** | **11h 25m**    |
-| Total working time         | 16h (3 × 5h 20m) |
-| **Lab share**              | **~71%** ✓     |
+| **Hands-on lab (15 labs)** | **10h 55m**    |
+| Total working time         | 15h 30m        |
+| **Lab share**              | **~70%** ✓     |
 
 ## Lab Dependency Chain
 
@@ -179,4 +179,4 @@ From then on, every lab opens files that are already on disk under
 
 - A laptop with a modern browser (Chrome, Firefox, Safari, or Edge)
 - Reliable internet connection
-- That's it — Cloud9 provides the IDE, AWS CLI, Python, .NET, Java, `git`, `curl`, `jq`, Docker, and SAM CLI
+- That's it — Cloud9 provides the IDE, AWS CLI, Python + `boto3`, `git`, `curl`, `jq`, Docker, and SAM CLI
