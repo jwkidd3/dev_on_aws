@@ -508,8 +508,20 @@ EOF
       echo "def handler(e,c): return {'statusCode':200,'body':'ok'}" > "$SAM_DIR/python/handler.py"
     fi
 
-    try "sam build (fetches requirements.txt)" \
-      bash -c "cd '$SAM_DIR' && sam build"
+    # AL2023 ships Python 3.9; SAM's builder needs python3.12 for our Runtime.
+    # Try to install it; if that fails, fall back to --use-container (Docker).
+    if ! command -v python3.12 >/dev/null 2>&1; then
+      sudo dnf install -y python3.12 >/dev/null 2>&1 || true
+    fi
+    if command -v python3.12 >/dev/null 2>&1; then
+      try "sam build (native, python3.12 present)" \
+        bash -c "cd '$SAM_DIR' && sam build"
+    elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+      try "sam build --use-container (python3.12 not installed)" \
+        bash -c "cd '$SAM_DIR' && sam build --use-container"
+    else
+      fail "sam build" "no python3.12 and no Docker — install one of the two"
+    fi
 
     SAM_STACK="sam-${PREFIX}"
     (cd "$SAM_DIR" && sam deploy \

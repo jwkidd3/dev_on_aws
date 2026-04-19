@@ -113,7 +113,39 @@ Tier in non-production accounts. Expect well under $0.10 per run.
 
 - AWS CLI v2 (preinstalled in Cloud9)
 - Python 3 + `pip3` (preinstalled in Cloud9)
-- For `--skip-sam` off: SAM CLI and Docker (both preinstalled in Cloud9)
+- `python3.12` on PATH **or** Docker running (SAM needs one to build a
+  `Runtime: python3.12` function). Cloud9 on AL2023 ships Python 3.9 by
+  default; the script tries `sudo dnf install -y python3.12` and falls back
+  to `sam build --use-container` if Docker is available.
 - IAM permissions to create the resources above (the tester's IAM user or role
   needs broad create/delete on S3, DynamoDB, Lambda, IAM, API Gateway, Cognito,
   CloudFormation, and X-Ray for a full run)
+
+## Known limitation: Cloud9 AMTC blocks IAM writes
+
+By default, Cloud9 uses **AWS Managed Temporary Credentials (AMTC)**. AMTC
+deliberately blocks a set of sensitive API calls — notably every
+`iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PutRolePolicy`,
+`iam:DeleteRole`, and most `sts:*` calls. In that environment the validator
+fails on every Lab 4 / Lab 5 step and every IAM cleanup, with:
+
+```
+An error occurred (InvalidClientTokenId) when calling the CreateRole operation:
+The security token included in the request is invalid.
+```
+
+The script is correct — the environment isn't allowed to do what the labs do.
+Two ways to run the full validator:
+
+1. **Turn off AMTC in this Cloud9** — `Preferences → AWS Settings → Credentials`
+   → disable *AWS managed temporary credentials*. Then run
+   `aws configure` with long-lived keys for an IAM user that has the
+   permissions listed above. (AMTC re-enables itself if the instance
+   restarts; re-disable after every restart.)
+2. **Run the validator outside Cloud9** — on a laptop with the AWS CLI and
+   credentials for the shared account. All operations are CLI-only, nothing
+   requires Cloud9 itself.
+
+Students doing the **labs** (not the validator) are not affected by this —
+Lab 4 creates the IAM role through the Lambda console wizard, which goes
+through the Cloud9 console session, not the CLI credential chain.

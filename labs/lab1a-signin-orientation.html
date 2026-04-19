@@ -37,17 +37,18 @@
 <div class="reveal"><div class="slides">
 
 <section class="title-slide" data-background-color="#FF9900">
-  <span class="lab-tag">Hands-On Lab · 25 min · Console</span>
+  <span class="lab-tag">Hands-On Lab · 30 min · Console</span>
   <h1>🧪 Lab 1a</h1>
   <h3 style="color:#fff">Sign In &amp; Create Your Cloud9 Environment</h3>
-  <p class="small" style="color:#fff">Day 1 — Environment Setup <span class="time">25 min</span></p>
+  <p class="small" style="color:#fff">Day 1 — Environment Setup <span class="time">30 min</span></p>
 </section>
 
 <section>
-  <h2>Objectives &amp; Access <span class="time">3 min</span></h2>
+  <h2>Objectives &amp; Access <span class="time">2 min</span></h2>
   <ul>
     <li>Sign into the class account</li>
     <li>Create your own Cloud9 IDE (m5.large, SSH)</li>
+    <li>Attach <code>LabRole</code> and turn off managed temporary credentials</li>
     <li>Clone the course repo and verify the files landed</li>
   </ul>
   <p class="small"><strong>Console:</strong> <code>https://kiddcorp.signin.aws.amazon.com/console</code><br>
@@ -79,20 +80,43 @@
 </section>
 
 <section>
-  <h2>Step 3 — Open Cloud9, Smoke Test &amp; Install boto3 <span class="time">4 min</span></h2>
-  <p class="small">Once status is <em>Available</em>, click <strong>Open</strong>. In the Cloud9 terminal (bottom pane):</p>
+  <h2>Step 3 — Attach <code>LabRole</code> to Your Cloud9 EC2 <span class="time">5 min</span></h2>
+  <p class="small">By default Cloud9 uses <strong>AWS Managed Temporary Credentials</strong> (AMTC), which block several IAM, STS, and Lambda calls our labs need. We fix this by pointing the underlying EC2 at the pre-provisioned <code>LabRole</code> and turning AMTC off.</p>
+  <ol>
+    <li>Open the <strong>EC2</strong> console → <strong>Instances</strong></li>
+    <li>Find the instance named <code>aws-cloud9-dev-on-aws-userN-…</code> — that's the EC2 behind your Cloud9</li>
+    <li>Select it → <strong>Actions</strong> → <strong>Security</strong> → <strong>Modify IAM role</strong></li>
+    <li>Choose <code>LabRole</code> → <strong>Update IAM role</strong></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Step 4 — Disable Managed Credentials in Cloud9 <span class="time">2 min</span></h2>
+  <ol>
+    <li>Back in the Cloud9 IDE, top-left gear icon → <strong>Preferences</strong></li>
+    <li>Left panel → <strong>AWS Settings</strong> → <strong>Credentials</strong></li>
+    <li>Toggle <strong>AWS managed temporary credentials</strong> to <strong>OFF</strong></li>
+    <li>Close the Preferences tab</li>
+  </ol>
+  <p class="small">With AMTC off, the SDK/CLI fall through to IMDS and pick up <code>LabRole</code>'s credentials — no <code>aws configure</code>, no keys on disk. If the Cloud9 instance is stopped and restarted, AMTC stays off; if you delete and recreate the Cloud9, redo both steps.</p>
+</section>
+
+<section>
+  <h2>Step 5 — Smoke Test &amp; Install boto3 <span class="time">3 min</span></h2>
+  <p class="small">In the Cloud9 terminal (bottom pane):</p>
   <pre><code>aws --version
 aws sts get-caller-identity
-# Arn: arn:aws:iam::...:user/user1 ← confirms your IAM identity
+# Arn: arn:aws:sts::...:assumed-role/LabRole/i-0abc…
+# ← confirms you're now running as LabRole, not AMTC
 
 # boto3 isn't on the default AL2023 image — install once
 pip3 install --user boto3
 python3 -c "import boto3; print(boto3.__version__)"</code></pre>
-  <p class="small">Credentials come from the Cloud9 instance — no <code>aws configure</code> needed. <code>--user</code> installs into <code>~/.local</code>, which is on Python's default import path.</p>
+  <p class="small">If the ARN still shows <code>user/user1</code> or an AMTC session, redo Step 4 — Cloud9 sometimes needs a second toggle. <code>--user</code> installs boto3 into <code>~/.local</code>, which is on Python's default import path.</p>
 </section>
 
 <section>
-  <h2>Step 4 — Clone the Course Repo &amp; Verify <span class="time">4 min</span></h2>
+  <h2>Step 6 — Clone the Course Repo &amp; Verify <span class="time">3 min</span></h2>
   <pre><code>cd ~/environment
 git clone https://github.com/jwkidd3/dev_on_aws
 cp -r dev_on_aws/labs/files ./dev-on-aws
@@ -110,7 +134,8 @@ done</code></pre>
   <h2>Success Criteria <span class="time">2 min</span></h2>
   <ul>
     <li>✅ Cloud9 <code>dev-on-aws-userN</code> created on <strong>m5.large</strong> with <strong>SSH</strong></li>
-    <li>✅ <code>aws sts get-caller-identity</code> returns your IAM user ARN</li>
+    <li>✅ Underlying EC2 instance has <code>LabRole</code> attached and AMTC is off</li>
+    <li>✅ <code>aws sts get-caller-identity</code> returns an <code>assumed-role/LabRole/…</code> ARN</li>
     <li>✅ All 7 verify lines show <code>OK</code></li>
   </ul>
   <p class="small">Class conventions — shown now, enforced in later labs:</p>

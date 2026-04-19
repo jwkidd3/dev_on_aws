@@ -47,11 +47,16 @@
 </section>
 
 <section>
+  <h2>What Cognito Is</h2>
+  <p class="small">Identity-as-a-service. A managed replacement for the auth code you'd otherwise build in-house: sign-up, sign-in, password reset, MFA, social login, account lockout. Same category as Auth0 and Okta, wired directly into AWS.</p>
+</section>
+
+<section>
   <h2>Cognito — Two Pieces</h2>
   <ul>
-    <li><strong>User Pool</strong> — directory; sign-up, sign-in, MFA, JWT issuance</li>
-    <li><strong>Identity Pool</strong> — exchanges an ID token for temp AWS credentials (browser → AWS direct)</li>
-    <li>Most apps need only a user pool</li>
+    <li><strong>User Pool</strong> — the user directory. Stores profiles, hashes passwords, handles sign-up / sign-in, issues JWTs.</li>
+    <li><strong>Identity Pool</strong> — exchanges an ID token for short-lived AWS credentials so a browser can call AWS services directly (rare; mostly for native apps).</li>
+    <li>Most web/API apps need only a user pool (this course does).</li>
   </ul>
 </section>
 

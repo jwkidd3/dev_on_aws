@@ -25,9 +25,9 @@ Software developers, solution architects, and IT professionals with:
 - **Console URL:** `https://kiddcorp.signin.aws.amazon.com/console`
 - **Usernames:** `user1`, `user2`, `user3`, … — handed out at class start
 - **Cloud9 environment:** students **create their own** in Lab 1a — new EC2, **m5.large**, **SSH** connection, Amazon Linux 2023, 30-min idle timeout
-- **Pre-seeded per student:** the IAM user `userN` plus prefix-enforcing policies attached to that user. *Everything else* — Cloud9, DynamoDB tables, Lambda roles, S3 buckets, Cognito pools, API Gateway, SAM stacks — students create in the labs.
+- **Pre-seeded per student:** the IAM user `userN` plus prefix-enforcing policies attached to that user, and a shared **`LabRole`** that has the broader permissions the labs exercise (IAM, STS, Lambda, SAM/CloudFormation, etc.). *Everything else* — Cloud9, DynamoDB tables, Lambda roles, S3 buckets, Cognito pools, API Gateway, SAM stacks — students create in the labs.
 - **Prefix convention:** every resource a student creates starts with their user ID (`student-user1-…`, `Items-user1`, `lab4-user1`, `StudentLambdaRole-user1`). The IAM policies enforce this.
-- **Credentials:** AWS Managed Temporary Credentials flow from the Cloud9-owning IAM user — no `aws configure`, no access keys on laptops.
+- **Credentials:** Cloud9's default **AWS Managed Temporary Credentials (AMTC)** block a handful of IAM/STS/Lambda calls the labs need. In **Lab 1a** students attach **`LabRole`** to the Cloud9 EC2 instance and **turn AMTC off** so the SDK/CLI pick up the role via IMDS — no `aws configure`, no access keys on laptops.
 - **Editor vs. terminal:** class convention set in Lab 1a — source/config files are authored in the Cloud9 **editor**; commands ≤ ~5 lines go into the **terminal**. Never paste multi-line source into a shell prompt.
 
 ## Console vs. SDK Labs
@@ -55,18 +55,18 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | 09:35 – 09:55 | [M3 — Getting Started with Development on AWS](presentations/03-getting-started-development.html) | 20 min |
 | 09:55 – 10:10 | *Break*                                          | 15 min |
 | 10:10 – 10:30 | [M4 — Getting Started with Permissions](presentations/04-getting-started-permissions.html) | 20 min |
-| 10:30 – 10:55 | **[Lab 1a — Sign In & Create Your Cloud9 Environment](labs/lab1a-signin-orientation.html)** | 25 min |
-| 10:55 – 11:30 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 35 min |
-| 11:30 – 12:15 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
-| 12:15 – 13:15 | *Lunch*                                          | 60 min |
-| 13:15 – 13:27 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
-| 13:27 – 13:40 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
-| 13:40 – 13:55 | *Break*                                          | 15 min |
-| 13:55 – 14:40 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
-| 14:40 – 15:25 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
-| 15:25 – 16:00 | *Day-1 wrap / Q&A*                                | 35 min |
+| 10:30 – 11:00 | **[Lab 1a — Sign In & Create Your Cloud9 Environment](labs/lab1a-signin-orientation.html)** | 30 min |
+| 11:00 – 11:35 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 35 min |
+| 11:35 – 12:20 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
+| 12:20 – 13:20 | *Lunch*                                          | 60 min |
+| 13:20 – 13:32 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
+| 13:32 – 13:45 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
+| 13:45 – 14:00 | *Break*                                          | 15 min |
+| 14:00 – 14:45 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
+| 14:45 – 15:30 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
+| 15:30 – 16:00 | *Day-1 wrap / Q&A*                                | 30 min |
 
-**Day 1 totals:** lecture 100 min · lab 195 min · **lab share 66%**
+**Day 1 totals:** lecture 100 min · lab 200 min · **lab share 67%**
 
 ### Day 2 — Data & Logic
 
@@ -113,9 +113,9 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | Metric                     | Time           |
 | -------------------------- | -------------- |
 | Lecture (15 modules)       | 4h 35m         |
-| **Hands-on lab (15 labs)** | **10h 55m**    |
-| Total working time         | 15h 30m        |
-| **Lab share**              | **~70%** ✓     |
+| **Hands-on lab (15 labs)** | **11h 0m**     |
+| Total working time         | 15h 35m        |
+| **Lab share**              | **~71%** ✓     |
 
 ## Lab Dependency Chain
 

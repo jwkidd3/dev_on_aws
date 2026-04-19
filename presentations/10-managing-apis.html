@@ -37,12 +37,14 @@
 </section>
 
 <section>
-  <h2>What It Does</h2>
+  <h2>What API Gateway Is</h2>
+  <p class="small">The "front door" of your serverless app — the piece that receives HTTP requests from the internet and dispatches them to your backend.</p>
   <ul>
-    <li>Managed HTTPS endpoint in front of Lambda, HTTP, or AWS services</li>
-    <li>Handles TLS, auth, throttling, validation, caching, versioning, CORS</li>
-    <li><strong>REST API</strong> — feature-rich, more expensive</li>
-    <li><strong>HTTP API</strong> — ~70% cheaper, simpler. Use unless you need a REST-only feature.</li>
+    <li>In a traditional stack you'd put <strong>nginx</strong> or an <strong>ALB</strong> here</li>
+    <li>API Gateway replaces that — fully managed, no servers to patch</li>
+    <li>Handles TLS, auth, throttling, validation, caching, versioning, CORS for you</li>
+    <li>Typical flow: <em>client → API Gateway → Lambda → DynamoDB / S3</em></li>
+    <li><strong>REST API</strong> — feature-rich, more expensive · <strong>HTTP API</strong> — ~70% cheaper, simpler</li>
   </ul>
 </section>
 

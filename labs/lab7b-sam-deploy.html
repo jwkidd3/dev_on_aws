@@ -49,7 +49,7 @@
     <li>Review a SAM template that covers the whole app</li>
     <li><code>sam build</code> + <code>sam deploy --guided</code> into a fresh stack</li>
     <li>Make a code change and redeploy in place</li>
-    <li>Inspect the generated CloudFormation stack</li>
+    <li>Verify the deployed resources through their service consoles</li>
   </ul>
 </section>
 
@@ -81,7 +81,12 @@ ls -R
 
 <section>
   <h2>Step 2 — Build &amp; First Deploy <span class="time">7 min</span></h2>
+  <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 ships Python 3.9, so <code>sam build</code> needs either <code>python3.12</code> installed locally or <code>--use-container</code> (Docker):</p>
   <pre><code>cd ~/environment/dev-on-aws/lab7
+
+# One-time: install the runtime SAM needs to build against
+sudo dnf install -y python3.12
+
 sam build
 
 sam deploy --guided \
@@ -93,14 +98,14 @@ sam deploy --guided \
 #   UploadsBucket   = $BUCKET   (from Lab 2a)
 # Confirm IAM changes: y
 # Save arguments to samconfig.toml: y</code></pre>
+  <p class="small">If <code>dnf</code> can't install <code>python3.12</code>, run <code>sam build --use-container</code> instead — it builds inside an AWS-supplied Docker image that already has Python 3.12.</p>
   <p class="small">Creates an S3 bucket for artifacts (prefixed <code>aws-sam-cli-managed-default-</code>) on first use — acceptable in shared accounts.</p>
 </section>
 
 <section>
   <h2>Step 3 — Smoke the New Stack <span class="time">7 min</span></h2>
-  <pre><code>API_URL=$(aws cloudformation describe-stacks \
-  --stack-name dev-on-aws-$USER_ID \
-  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" -o text )
+  <p class="small"><code>sam deploy</code>'s final output lists the stack's <strong>Outputs</strong>, including <code>ApiUrl</code>. Copy that value:</p>
+  <pre><code>export API_URL="https://xxxx.execute-api.us-east-1.amazonaws.com/prod"
 
 curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
      -H "Content-Type: application/json" \
@@ -118,33 +123,33 @@ curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
 </section>
 
 <section>
-  <h2>Step 5 — Peek at CloudFormation &amp; X-Ray <span class="time">7 min</span></h2>
+  <h2>Step 5 — Verify Resources &amp; See the Trace <span class="time">7 min</span></h2>
+  <p class="small">The stack's resources are regular AWS resources visible in each service's console. Fire traffic and then confirm end-to-end via X-Ray:</p>
   <ol>
-    <li>CloudFormation console → <code>dev-on-aws-$USER_ID</code> → <strong>Resources</strong> tab — every Lambda, table, role, permission</li>
-    <li><strong>Events</strong> tab — the deploy timeline</li>
-    <li>Fire 10 test requests, then open CloudWatch → <strong>X-Ray traces</strong> → <strong>Service map</strong></li>
-    <li>Confirm: client → API GW → ItemsFn → DynamoDB</li>
+    <li><strong>Lambda console</strong> — the function SAM created shows up alongside <code>lab4-$USER_ID</code>; note the stack-generated suffix in its name</li>
+    <li><strong>DynamoDB console</strong> — the SAM-managed table appears with an auto-generated name</li>
+    <li>Fire 10 test requests against <code>$API_URL/items</code></li>
+    <li>CloudWatch → <strong>X-Ray traces</strong> → <strong>Service map</strong> — confirm: client → API GW → ItemsFn → DynamoDB</li>
   </ol>
 </section>
 
 <section>
   <h2>Step 6 — Tear Down <span class="time">7 min</span></h2>
   <pre><code>sam delete --stack-name dev-on-aws-$USER_ID --region us-east-1
-# Confirm y when prompted
-
-aws cloudformation describe-stacks --stack-name dev-on-aws-$USER_ID
-# → Stack does not exist</code></pre>
-  <p class="small">Removes every resource SAM created. Your Cognito pool, S3 site bucket, and pre-Lab-7 Lambda/API stay put — Module 15 has the full cleanup checklist.</p>
+# Confirm y when prompted — SAM removes every resource in the stack.
+# Re-check the Lambda / DynamoDB consoles — the SAM-managed resources are gone.</code></pre>
+  <p class="small">Your Cognito pool, S3 site bucket, and the Lab 4 / Lab 5 resources (which aren't in this stack) stay put — Module 15 has the full cleanup checklist.</p>
 </section>
 
 <section>
   <h2>Success Criteria <span class="time">4 min</span></h2>
   <ul>
-    <li>✅ Stack reached <code>CREATE_COMPLETE</code> / <code>UPDATE_COMPLETE</code></li>
+    <li>✅ <code>sam deploy --guided</code> finished and printed the <code>ApiUrl</code> output</li>
     <li>✅ POST to the SAM-managed API URL returned 200 with your JWT</li>
     <li>✅ Code-change redeploy completed in &lt; 1 min with observable difference</li>
+    <li>✅ The SAM-managed Lambda and DynamoDB table appear in their service consoles</li>
     <li>✅ X-Ray service map shows the full request path</li>
-    <li>✅ <code>sam delete</code> removed the entire stack cleanly</li>
+    <li>✅ <code>sam delete</code> removed every resource the stack created</li>
   </ul>
 </section>
 

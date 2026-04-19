@@ -55,12 +55,17 @@
 </section>
 
 <section>
-  <h2>Why SAM</h2>
+  <h2>What CloudFormation Is</h2>
+  <p class="small">AWS's native Infrastructure-as-Code service. You describe resources in a <strong>template</strong> (YAML or JSON), CloudFormation creates them as a <strong>stack</strong> — a named unit it tracks and can update or delete atomically. "Infrastructure as Code" in AWS ≈ CloudFormation, unless you're using a third-party tool on top.</p>
+</section>
+
+<section>
+  <h2>What SAM Is — and Isn't</h2>
   <ul>
-    <li>Shorthand for CloudFormation that's serverless-aware</li>
-    <li>Defines Lambdas, APIs, DynamoDB tables, queues in one YAML</li>
-    <li>Local invoke + build + package + deploy from <code>sam</code> CLI</li>
-    <li>Generates a CloudFormation stack you can inspect</li>
+    <li><strong>SAM is a dialect of CloudFormation</strong>, tuned for serverless. You write less YAML; the <code>sam</code> CLI expands your template into full CloudFormation and hands it off to the CloudFormation service.</li>
+    <li><strong>The resources it creates are real AWS resources</strong> — the same Lambdas, tables, APIs, and policies you'd build by hand. After <code>sam deploy</code>, open the Lambda / DynamoDB / API Gateway consoles; you'll see your stack's resources there.</li>
+    <li><strong>Stack lifecycle:</strong> <code>sam deploy</code> creates or updates the stack; <code>sam delete</code> → CloudFormation → deletes every resource in one shot.</li>
+    <li>The <code>sam</code> CLI also provides local invoke / build / package helpers so you don't need to round-trip through AWS for every code change.</li>
   </ul>
 </section>
 
