@@ -97,12 +97,14 @@ delete_log_group() {
 }
 
 # APIGW throttles DeleteRestApi at 1 req / 30 s / account — retry with backoff.
+# On total failure, print the last AWS error to stdout so the caller can surface it.
 delete_rest_api() {
-  local id="$1"
-  for delay in 0 32 45 60 90; do
+  local id="$1" last_err=""
+  for delay in 0 35 60 90 120; do
     [ "$delay" -gt 0 ] && sleep "$delay"
-    aws apigateway delete-rest-api --rest-api-id "$id" >/dev/null 2>&1 && return 0
+    last_err=$(aws apigateway delete-rest-api --rest-api-id "$id" 2>&1 >/dev/null) && return 0
   done
+  printf '%s' "$last_err" | tr '\n' ' ' | head -c 200
   return 1
 }
 
@@ -117,9 +119,9 @@ cleanup() {
       || fail "bootstrap delete-user-pool" "non-zero"
   }
   [ -n "$BS_API" ] && {
-    delete_rest_api "$BS_API" \
+    local_err=$(delete_rest_api "$BS_API") \
       && pass "bootstrap cleanup: api $BS_API" \
-      || fail "bootstrap delete-rest-api" "throttled after retries"
+      || fail "bootstrap delete-rest-api" "${local_err:-throttled after retries}"
   }
   [ -n "$BS_FN" ] && {
     aws lambda delete-function --function-name "$BS_FN" >/dev/null 2>&1 \
@@ -160,9 +162,9 @@ cleanup() {
       || fail "cognito delete-user-pool" "non-zero"
   }
   [ -n "$REST_API" ] && {
-    delete_rest_api "$REST_API" \
+    local_err=$(delete_rest_api "$REST_API") \
       && pass "apigw delete-rest-api $REST_API" \
-      || fail "apigw delete-rest-api" "throttled after retries"
+      || fail "apigw delete-rest-api" "${local_err:-throttled after retries}"
   }
   [ -n "$LAMBDA_FN" ] && {
     aws lambda delete-function --function-name "$LAMBDA_FN" >/dev/null 2>&1 \
