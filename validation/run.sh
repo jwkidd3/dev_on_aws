@@ -348,9 +348,16 @@ wait_lambda_active "$LAMBDA_FN" \
 
 aws lambda invoke --function-name "$LAMBDA_FN" \
   --payload '{"test":"validator"}' --cli-binary-format raw-in-base64-out \
-  "$TMP/out.json" >/dev/null 2>&1 && grep -q '"ok": true' "$TMP/out.json" \
+  "$TMP/out.json" >"$TMP/invoke.meta" 2>&1 \
+  && python3 -c "
+import json,sys
+r = json.load(open('$TMP/out.json'))
+if r.get('statusCode') != 200: sys.exit('statusCode != 200: ' + str(r))
+b = json.loads(r.get('body') or '{}')
+sys.exit(0 if b.get('ok') is True else 'body.ok not true: ' + str(b))
+" >/dev/null 2>&1 \
   && pass "invoke + parse response" \
-  || fail "invoke" "bad response"
+  || fail "invoke" "bad response ($(cat "$TMP/out.json" 2>/dev/null | head -c 200))"
 
 aws lambda update-function-configuration --function-name "$LAMBDA_FN" \
   --tracing-config Mode=Active >/dev/null 2>&1 \
