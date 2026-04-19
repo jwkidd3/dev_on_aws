@@ -81,11 +81,12 @@ ls -R
 
 <section>
   <h2>Step 2 — Build &amp; First Deploy <span class="time">7 min</span></h2>
-  <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 ships Python 3.9, so <code>sam build</code> needs either <code>python3.12</code> installed locally or <code>--use-container</code> (Docker):</p>
+  <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 ships Python 3.9, so <code>sam build</code> needs either <code>python3.12</code> + its pip installed locally or <code>--use-container</code> (Docker):</p>
   <pre><code>cd ~/environment/dev-on-aws/lab7
 
-# One-time: install the runtime SAM needs to build against
-sudo dnf install -y python3.12
+# One-time: install the runtime AND its pip — SAM needs both
+sudo dnf install -y python3.12 python3.12-pip
+python3.12 -m pip --version   # sanity-check pip is wired up
 
 sam build
 

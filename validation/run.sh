@@ -515,19 +515,26 @@ EOF
       echo "def handler(e,c): return {'statusCode':200,'body':'ok'}" > "$SAM_DIR/python/handler.py"
     fi
 
-    # AL2023 ships Python 3.9; SAM's builder needs python3.12 for our Runtime.
-    # Try to install it; if that fails, fall back to --use-container (Docker).
+    # AL2023 ships Python 3.9; SAM's builder needs BOTH python3.12 AND pip
+    # for 3.12 (the pip package is separate on AL2023).
     if ! command -v python3.12 >/dev/null 2>&1; then
-      sudo dnf install -y python3.12 >/dev/null 2>&1 || true
+      sudo dnf install -y python3.12 python3.12-pip >/dev/null 2>&1 || true
     fi
-    if command -v python3.12 >/dev/null 2>&1; then
-      try "sam build (native, python3.12 present)" \
+    # python3.12 present but no pip? install pip separately or bootstrap it.
+    if command -v python3.12 >/dev/null 2>&1 \
+       && ! python3.12 -m pip --version >/dev/null 2>&1; then
+      sudo dnf install -y python3.12-pip >/dev/null 2>&1 \
+        || python3.12 -m ensurepip --default-pip >/dev/null 2>&1 || true
+    fi
+    if command -v python3.12 >/dev/null 2>&1 \
+       && python3.12 -m pip --version >/dev/null 2>&1; then
+      try "sam build (native, python3.12 + pip present)" \
         bash -c "cd '$SAM_DIR' && sam build"
     elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-      try "sam build --use-container (python3.12 not installed)" \
+      try "sam build --use-container (native python3.12 missing pip)" \
         bash -c "cd '$SAM_DIR' && sam build --use-container"
     else
-      fail "sam build" "no python3.12 and no Docker — install one of the two"
+      fail "sam build" "need python3.12 + pip (dnf install python3.12 python3.12-pip), or Docker for --use-container"
     fi
 
     SAM_STACK="sam-${PREFIX}"
