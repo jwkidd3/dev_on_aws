@@ -12,7 +12,7 @@ prefix so it never collides with student work. Coverage:
 
 | Lab | Operations exercised |
 |---|---|
-| bootstrap | `labs/files/bootstrap.sh 5a` end-to-end (env + bucket + table + role + function), then re-run to assert idempotency |
+| bootstrap | `labs/files/bootstrap.sh` against **all 13 labIds** (`1b 2a 2b 3a 3b 4a 4b 5a 6a 6b 6c 7a 7b`) under one synthetic USER_ID — exercises every `ensure_*` function; verifies bucket, table, role, function, API, Cognito pool, site bucket exist; re-runs `6c` and asserts ≥5 "already present" skips for idempotency |
 | 1b  | `pip3 install --user boto3`; `sts:GetCallerIdentity` from Python |
 | 1c  | `s3:CreateBucket` / `DeleteBucket` round-trip in the student prefix |
 | 2a/2b | S3 bucket create, versioning, object PUT with metadata, HEAD, presigned GET, presigned PUT |

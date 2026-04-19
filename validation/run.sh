@@ -209,63 +209,89 @@ ACCT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null) \
   || { fail "sts get-caller-identity" "auth"; exit 1; }
 
 # ----- Bootstrap script — idempotent "catch me up" setup -----
-# Tests labs/files/bootstrap.sh by running it for Lab 5a (which transitively
-# provisions env + bucket + table + role + lambda). Then re-runs it to assert
-# idempotency (no duplicate resources; "already present" lines in output).
+# Exercises every supported labId (13) in dependency order under a single
+# synthetic USER_ID, so every ensure_* function in bootstrap.sh is invoked
+# and each AWS resource is created exactly once. Then spot-checks
+# idempotency by re-running the top-of-chain target.
 if [ "$SKIP_BOOTSTRAP" = 0 ]; then
-  step "bootstrap.sh — idempotent lab setup"
+  step "bootstrap.sh — all 13 labIds under one synthetic user"
   BOOTSTRAP="$(cd "$(dirname "$0")/.." && pwd)/labs/files/bootstrap.sh"
   if [ ! -f "$BOOTSTRAP" ]; then
     fail "bootstrap.sh present" "$BOOTSTRAP not found"
   else
     pass "bootstrap.sh present"
-    # Run as a distinct synthetic user so we don't collide with the main stage
-    BS_USER_ID="bsval${STAMP//-/}"   # e.g. bsval202604191530 (no dashes — S3 bucket safe)
+
+    BS_USER_ID="bsval${STAMP//-/}"           # S3-bucket-safe; no dashes
     BS_ROLE="StudentLambdaRole-${BS_USER_ID}"
     BS_FN="lab4-${BS_USER_ID}"
     BS_TABLE="Items-${BS_USER_ID}"
 
-    # Ensure a clean env file for this test
-    BS_ENV="${TMP}/bs.env"
-    HOME_ORIG="$HOME"; export HOME="$TMP"   # redirect ~/.dev-on-aws.env into tempdir
+    # Redirect ~/.dev-on-aws.env into tempdir so the validator doesn't
+    # clobber the operator's real env file.
+    HOME_ORIG="$HOME"; export HOME="$TMP"
     : > "$TMP/.dev-on-aws.env"
 
-    # First run — creates everything
-    if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" 5a > "$TMP/bs1.log" 2>&1; then
-      pass "bootstrap 5a (first run)"
-    else
-      fail "bootstrap 5a (first run)" "$(tail -c 220 "$TMP/bs1.log" | tr '\n' ' ')"
-    fi
+    # Run every labId in dependency order. Each is idempotent against the
+    # resources earlier targets already created.
+    for LABID in 1b 2a 2b 3a 3b 4a 4b 5a 6a 6b 6c 7a 7b; do
+      if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" "$LABID" >"$TMP/bs-${LABID}.log" 2>&1; then
+        pass "bootstrap $LABID"
+      else
+        fail "bootstrap $LABID" "$(tail -c 200 "$TMP/bs-${LABID}.log" | tr '\n' ' ')"
+      fi
+    done
 
-    # Verify each expected resource exists
-    aws s3api list-buckets --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" --output text 2>/dev/null \
-      | grep -qE "^student-${BS_USER_ID}-uploads" \
-      && { BS_BUCKET=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" --output text); pass "bootstrap created uploads bucket ($BS_BUCKET)"; } \
-      || fail "bootstrap uploads bucket" "not found"
+    # Verify each ensure_* function produced the expected AWS resource.
+    BS_BUCKET=$(aws s3api list-buckets \
+        --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" \
+        --output text 2>/dev/null)
+    [ -n "$BS_BUCKET" ] && [ "$BS_BUCKET" != "None" ] \
+      && pass "verify: uploads bucket ($BS_BUCKET)" \
+      || fail "verify uploads bucket" "not found"
 
     aws dynamodb describe-table --table-name "$BS_TABLE" >/dev/null 2>&1 \
-      && pass "bootstrap created $BS_TABLE" \
-      || fail "bootstrap table" "not found"
+      && pass "verify: $BS_TABLE" \
+      || fail "verify table" "not found"
 
     aws iam get-role --role-name "$BS_ROLE" >/dev/null 2>&1 \
-      && pass "bootstrap created $BS_ROLE" \
-      || fail "bootstrap role" "not found"
+      && pass "verify: $BS_ROLE" \
+      || fail "verify role" "not found"
 
     aws lambda get-function --function-name "$BS_FN" >/dev/null 2>&1 \
-      && pass "bootstrap created $BS_FN" \
-      || fail "bootstrap function" "not found"
+      && pass "verify: $BS_FN" \
+      || fail "verify function" "not found"
 
-    # Second run — should detect existing resources and skip (idempotent)
-    if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" 5a > "$TMP/bs2.log" 2>&1; then
-      # Expect at least two "already present" skip lines (bucket, table, role, fn)
-      SKIP_COUNT=$(grep -c "already present" "$TMP/bs2.log" || true)
-      if [ "$SKIP_COUNT" -ge 3 ]; then
-        pass "bootstrap 5a re-run skipped $SKIP_COUNT resources (idempotent)"
+    BS_API=$(aws apigateway get-rest-apis \
+        --query "items[?name=='dev-on-aws-${BS_USER_ID}'].id | [0]" --output text 2>/dev/null)
+    [ -n "$BS_API" ] && [ "$BS_API" != "None" ] \
+      && pass "verify: api dev-on-aws-${BS_USER_ID} ($BS_API)" \
+      || fail "verify api" "not found"
+
+    BS_POOL=$(aws cognito-idp list-user-pools --max-results 60 \
+        --query "UserPools[?Name=='dev-on-aws-pool-${BS_USER_ID}'].Id | [0]" \
+        --output text 2>/dev/null)
+    [ -n "$BS_POOL" ] && [ "$BS_POOL" != "None" ] \
+      && pass "verify: pool dev-on-aws-pool-${BS_USER_ID} ($BS_POOL)" \
+      || fail "verify cognito pool" "not found"
+
+    BS_SITE=$(aws s3api list-buckets \
+        --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-site')] | [0].Name" \
+        --output text 2>/dev/null)
+    [ -n "$BS_SITE" ] && [ "$BS_SITE" != "None" ] \
+      && pass "verify: site bucket ($BS_SITE)" \
+      || fail "verify site bucket" "not found"
+
+    # Idempotency re-run — everything already exists; should skip 5+ resources.
+    # 6c is top-of-chain (covers all seven ensure_* paths).
+    if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" 6c >"$TMP/bs-rerun.log" 2>&1; then
+      SKIPS=$(grep -c "already present" "$TMP/bs-rerun.log" || true)
+      if [ "$SKIPS" -ge 5 ]; then
+        pass "idempotency: 6c re-run skipped $SKIPS resources"
       else
-        fail "bootstrap idempotency" "only $SKIP_COUNT skips on re-run (expected ≥3)"
+        fail "idempotency check" "only $SKIPS skips on re-run (expected ≥5)"
       fi
     else
-      fail "bootstrap 5a (second run)" "$(tail -c 220 "$TMP/bs2.log" | tr '\n' ' ')"
+      fail "bootstrap 6c (idempotency re-run)" "$(tail -c 200 "$TMP/bs-rerun.log" | tr '\n' ' ')"
     fi
 
     export HOME="$HOME_ORIG"
