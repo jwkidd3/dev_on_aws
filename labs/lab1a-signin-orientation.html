@@ -125,9 +125,12 @@ cp -r dev_on_aws/labs/files ./dev-on-aws
 cd ~/environment/dev-on-aws
 for f in lab1/smoke_test.py lab3/seed.py lab4/handler.py \
          lab4/lambda-perms.json lab6/add_methods.sh \
-         lab7/python/handler.py lab7/template.yaml; do
+         lab7/python/handler.py lab7/template.yaml \
+         bootstrap.sh; do
   [ -f "$f" ] &amp;&amp; echo "OK   $f" || echo "MISS $f"
-done</code></pre>
+done
+chmod +x ~/environment/dev-on-aws/bootstrap.sh</code></pre>
+  <p class="small"><code>bootstrap.sh</code> is the "catch me up" script — if you ever fall behind, <code>bash ~/environment/dev-on-aws/bootstrap.sh &lt;labId&gt;</code> creates-or-reuses every resource that lab needs. Each subsequent lab has a reminder.</p>
 </section>
 
 <section>

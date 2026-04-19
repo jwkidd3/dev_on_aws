@@ -56,11 +56,12 @@
 <section>
   <h2>Prerequisites <span class="time">3 min</span></h2>
   <ul>
-    <li>Lab 4a complete — function <code>lab4-user1</code> deployed</li>
-    <li>Bucket <code>student-user1-uploads-…</code> from Lab 2a still exists</li>
-    <li>Table <code>Items-user1</code> from Lab 3</li>
-    <li>Exported: <code>$BUCKET</code>, account ID in <code>$ACCT</code></li>
+    <li>Lab 4a complete — function <code>lab4-$USER_ID</code> deployed</li>
+    <li>Bucket <code>student-$USER_ID-uploads-…</code> from Lab 2a still exists</li>
+    <li>Table <code>Items-$USER_ID</code> from Lab 3</li>
+    <li>Exported: <code>$USER_ID</code>, <code>$ACCT</code>, <code>$BUCKET</code></li>
   </ul>
+  <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 4b</code> creates-or-reuses the bucket, table, role, and function so triggers have something to wire up.</p>
 </section>
 
 <section>

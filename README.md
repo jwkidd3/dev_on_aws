@@ -119,25 +119,34 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 
 ## Lab Dependency Chain
 
-Labs within a day build on earlier ones. Blocks across days depend on prior days:
+Labs build on each other conceptually, but each has a **bootstrap fallback** so no
+lab truly requires successful completion of the previous one. A student who falls
+behind runs `bash ~/environment/dev-on-aws/bootstrap.sh <labId>` and the script
+creates-or-reuses every resource that lab needs, then exports the expected env
+vars to `~/.dev-on-aws.env`:
 
 ```
-1a → 1b → 1c                 (Cloud9 / IAM)
-      ↓
-2a → 2b                      (S3 — uses student-userN- prefix)
-      ↓
-3a → 3b                      (DynamoDB — uses Items-userN)
-      ↓
-4a → 4b                      (Lambda — needs 2a bucket, 3a table)
-      ↓
-5a                           (API Gateway — needs 4b function)
-      ↓
-6a → 6b → 6c                 (Cognito + capstone — creates site bucket)
-      ↓
-7a → 7b                      (X-Ray + SAM — needs 6a pool, 6b client)
+1a  (REQUIRED — Cloud9 + LabRole + repo clone)
+ ↓
+1b → 1c            bootstrap.sh 1b|1c → env vars
+ ↓
+2a → 2b            bootstrap.sh 2a|2b → env vars
+ ↓
+3a → 3b            bootstrap.sh 3a|3b → env vars
+ ↓
+4a → 4b            bootstrap.sh 4a|4b → bucket + table (+ role, fn for 4b)
+ ↓
+5a                 bootstrap.sh 5a    → + Lambda role/function
+ ↓
+6a → 6b → 6c       bootstrap.sh 6a|6b|6c → + API + Cognito (+ site for 6c)
+ ↓
+7a → 7b            bootstrap.sh 7a|7b → full stack through Cognito
 ```
 
-A student who falls behind can copy another student's `~/environment/dev-on-aws/` directory forward; labs are self-contained, so any one student's end-state lets another skip ahead cleanly.
+The only hard dependency is **Lab 1a** (Cloud9 environment + LabRole attached +
+AMTC off + course repo cloned). Everything after that is reachable from the
+bootstrap script. The script is idempotent — re-running it detects existing
+resources and skips them.
 
 ## Repository Layout
 
@@ -152,6 +161,7 @@ dev_on_aws/
 │   ├── lab1a-signin-orientation.html
 │   └── … 14 more …
 └── labs/files/              ← source files students clone via GitHub in Lab 1a
+    ├── bootstrap.sh          ← "catch me up" setup for any lab
     ├── lab1/  (smoke_test.py)
     ├── lab3/  (seed.py, bulk_load.py)
     ├── lab4/  (handler.py, lambda-perms.json, notify.json)

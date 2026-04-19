@@ -15,7 +15,8 @@
 #
 # Skip expensive sections with flags:
 #   ./run.sh --skip-sam        # skip Lab 7b (sam build + deploy; needs Docker)
-#   ./run.sh --quick           # skip SAM and Cognito + API Gateway
+#   ./run.sh --skip-bootstrap  # skip the bootstrap.sh idempotency check
+#   ./run.sh --quick           # skip SAM, Cognito + API Gateway, AND bootstrap
 # -----------------------------------------------------------------------------
 set -u
 
@@ -27,13 +28,15 @@ PREFIX="labval-$STAMP"
 TMP="$(mktemp -d)"
 
 SKIP_SAM=0
+SKIP_BOOTSTRAP=0
 QUICK=0
 for arg in "$@"; do
   case "$arg" in
-    --skip-sam) SKIP_SAM=1 ;;
-    --quick)    SKIP_SAM=1; QUICK=1 ;;
+    --skip-sam)       SKIP_SAM=1 ;;
+    --skip-bootstrap) SKIP_BOOTSTRAP=1 ;;
+    --quick)          SKIP_SAM=1; SKIP_BOOTSTRAP=1; QUICK=1 ;;
     -h|--help)
-      sed -n '2,21p' "$0"; exit 0 ;;
+      sed -n '2,22p' "$0"; exit 0 ;;
   esac
 done
 
@@ -57,6 +60,8 @@ try() {
 # Tracked resources (for cleanup)
 BUCKET_UPLOADS=""; BUCKET_SITE=""; TABLE=""; LAMBDA_ROLE=""; LAMBDA_FN=""
 REST_API=""; POOL_ID=""; SAM_STACK=""; PROBE_BUCKET=""
+# Bootstrap-stage resources (created via labs/files/bootstrap.sh under a distinct USER_ID)
+BS_USER_ID=""; BS_BUCKET=""; BS_TABLE=""; BS_ROLE=""; BS_FN=""; BS_API=""; BS_POOL=""; BS_SITE=""
 
 empty_versioned_bucket() {
   # Delete every version AND delete-marker from a bucket, then the bucket itself.
@@ -94,6 +99,46 @@ delete_log_group() {
 cleanup() {
   step "Cleanup"
   # Reverse order of creation — best-effort, no hard fail
+
+  # --- Bootstrap-stage teardown (if the bootstrap test created anything) ---
+  [ -n "$BS_POOL" ] && {
+    aws cognito-idp delete-user-pool --user-pool-id "$BS_POOL" >/dev/null 2>&1 \
+      && pass "bootstrap cleanup: pool $BS_POOL" \
+      || fail "bootstrap delete-user-pool" "non-zero"
+  }
+  [ -n "$BS_API" ] && {
+    aws apigateway delete-rest-api --rest-api-id "$BS_API" >/dev/null 2>&1 \
+      && pass "bootstrap cleanup: api $BS_API" \
+      || fail "bootstrap delete-rest-api" "non-zero"
+  }
+  [ -n "$BS_FN" ] && {
+    aws lambda delete-function --function-name "$BS_FN" >/dev/null 2>&1 \
+      && pass "bootstrap cleanup: function $BS_FN" \
+      || fail "bootstrap delete-function" "non-zero"
+    delete_log_group "/aws/lambda/$BS_FN"
+  }
+  [ -n "$BS_ROLE" ] && {
+    aws iam delete-role-policy --role-name "$BS_ROLE" --policy-name LambdaAppAccess >/dev/null 2>&1 || true
+    aws iam detach-role-policy --role-name "$BS_ROLE" \
+        --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole >/dev/null 2>&1 || true
+    aws iam delete-role --role-name "$BS_ROLE" >/dev/null 2>&1 \
+      && pass "bootstrap cleanup: role $BS_ROLE" \
+      || fail "bootstrap delete-role" "non-zero"
+  }
+  [ -n "$BS_TABLE" ] && {
+    aws dynamodb delete-table --table-name "$BS_TABLE" >/dev/null 2>&1 \
+      && pass "bootstrap cleanup: table $BS_TABLE" \
+      || fail "bootstrap delete-table" "non-zero"
+  }
+  for B in "$BS_BUCKET" "$BS_SITE"; do
+    [ -z "$B" ] && continue
+    empty_versioned_bucket "$B"
+    aws s3api head-bucket --bucket "$B" >/dev/null 2>&1 \
+      && fail "bootstrap rb $B" "still present" \
+      || pass "bootstrap cleanup: s3 rb $B"
+  done
+
+  # --- Main-stage teardown ---
   [ -n "$SAM_STACK" ] && {
     aws cloudformation delete-stack --stack-name "$SAM_STACK" >/dev/null 2>&1 \
       && pass "cfn delete-stack $SAM_STACK" \
@@ -162,6 +207,70 @@ python3 --version >/dev/null 2>&1 && pass "python3 on PATH" || { fail "python3" 
 ACCT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null) \
   && pass "sts get-caller-identity ($ACCT)" \
   || { fail "sts get-caller-identity" "auth"; exit 1; }
+
+# ----- Bootstrap script — idempotent "catch me up" setup -----
+# Tests labs/files/bootstrap.sh by running it for Lab 5a (which transitively
+# provisions env + bucket + table + role + lambda). Then re-runs it to assert
+# idempotency (no duplicate resources; "already present" lines in output).
+if [ "$SKIP_BOOTSTRAP" = 0 ]; then
+  step "bootstrap.sh — idempotent lab setup"
+  BOOTSTRAP="$(cd "$(dirname "$0")/.." && pwd)/labs/files/bootstrap.sh"
+  if [ ! -f "$BOOTSTRAP" ]; then
+    fail "bootstrap.sh present" "$BOOTSTRAP not found"
+  else
+    pass "bootstrap.sh present"
+    # Run as a distinct synthetic user so we don't collide with the main stage
+    BS_USER_ID="bsval${STAMP//-/}"   # e.g. bsval202604191530 (no dashes — S3 bucket safe)
+    BS_ROLE="StudentLambdaRole-${BS_USER_ID}"
+    BS_FN="lab4-${BS_USER_ID}"
+    BS_TABLE="Items-${BS_USER_ID}"
+
+    # Ensure a clean env file for this test
+    BS_ENV="${TMP}/bs.env"
+    HOME_ORIG="$HOME"; export HOME="$TMP"   # redirect ~/.dev-on-aws.env into tempdir
+    : > "$TMP/.dev-on-aws.env"
+
+    # First run — creates everything
+    if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" 5a > "$TMP/bs1.log" 2>&1; then
+      pass "bootstrap 5a (first run)"
+    else
+      fail "bootstrap 5a (first run)" "$(tail -c 220 "$TMP/bs1.log" | tr '\n' ' ')"
+    fi
+
+    # Verify each expected resource exists
+    aws s3api list-buckets --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" --output text 2>/dev/null \
+      | grep -qE "^student-${BS_USER_ID}-uploads" \
+      && { BS_BUCKET=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" --output text); pass "bootstrap created uploads bucket ($BS_BUCKET)"; } \
+      || fail "bootstrap uploads bucket" "not found"
+
+    aws dynamodb describe-table --table-name "$BS_TABLE" >/dev/null 2>&1 \
+      && pass "bootstrap created $BS_TABLE" \
+      || fail "bootstrap table" "not found"
+
+    aws iam get-role --role-name "$BS_ROLE" >/dev/null 2>&1 \
+      && pass "bootstrap created $BS_ROLE" \
+      || fail "bootstrap role" "not found"
+
+    aws lambda get-function --function-name "$BS_FN" >/dev/null 2>&1 \
+      && pass "bootstrap created $BS_FN" \
+      || fail "bootstrap function" "not found"
+
+    # Second run — should detect existing resources and skip (idempotent)
+    if USER_ID="$BS_USER_ID" bash "$BOOTSTRAP" 5a > "$TMP/bs2.log" 2>&1; then
+      # Expect at least two "already present" skip lines (bucket, table, role, fn)
+      SKIP_COUNT=$(grep -c "already present" "$TMP/bs2.log" || true)
+      if [ "$SKIP_COUNT" -ge 3 ]; then
+        pass "bootstrap 5a re-run skipped $SKIP_COUNT resources (idempotent)"
+      else
+        fail "bootstrap idempotency" "only $SKIP_COUNT skips on re-run (expected ≥3)"
+      fi
+    else
+      fail "bootstrap 5a (second run)" "$(tail -c 220 "$TMP/bs2.log" | tr '\n' ' ')"
+    fi
+
+    export HOME="$HOME_ORIG"
+  fi
+fi
 
 # ----- Lab 1b — boto3 install & smoke -----
 step "Lab 1b — boto3 install & smoke"

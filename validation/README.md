@@ -12,6 +12,7 @@ prefix so it never collides with student work. Coverage:
 
 | Lab | Operations exercised |
 |---|---|
+| bootstrap | `labs/files/bootstrap.sh 5a` end-to-end (env + bucket + table + role + function), then re-run to assert idempotency |
 | 1b  | `pip3 install --user boto3`; `sts:GetCallerIdentity` from Python |
 | 1c  | `s3:CreateBucket` / `DeleteBucket` round-trip in the student prefix |
 | 2a/2b | S3 bucket create, versioning, object PUT with metadata, HEAD, presigned GET, presigned PUT |
@@ -36,9 +37,10 @@ From a Cloud9 terminal, after cloning this repo:
 cd ~/environment/dev_on_aws/validation
 chmod +x run.sh
 
-./run.sh                 # full run (~5 min, creates ~15 resources)
-./run.sh --skip-sam      # skip the SAM build/deploy (fastest if you only care about CLI ops)
-./run.sh --quick         # skip SAM + Cognito + API-Gateway authorizer
+./run.sh                    # full run (~6 min, creates ~20 resources)
+./run.sh --skip-sam         # skip Lab 7b (sam build + deploy; needs Docker)
+./run.sh --skip-bootstrap   # skip the bootstrap.sh idempotency check
+./run.sh --quick            # skip SAM + Cognito + API Gateway authorizer + bootstrap
 ```
 
 ## Output
