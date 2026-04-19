@@ -103,10 +103,11 @@ aws sts get-caller-identity
 </section>
 
 <section>
-  <h2>Step 4 — Pull the Course Files <span class="time">4 min</span></h2>
-  <p class="small">Each lab has supporting files (handlers, SAM templates, helper scripts) pre-authored in the course S3 bucket. Sync once; reuse all week.</p>
-  <pre><code>aws s3 sync s3://kiddcorp-class-materials/dev-on-aws/labs/files/ \
-            ~/environment/dev-on-aws/
+  <h2>Step 4 — Clone the Course Repo <span class="time">4 min</span></h2>
+  <p class="small">Each lab has supporting files (handlers, SAM templates, helper scripts) on GitHub. Clone once, copy the supporting files into your working directory, reuse all week.</p>
+  <pre><code>cd ~/environment
+git clone https://github.com/jwkidd3/dev_on_aws
+cp -r dev_on_aws/labs/files ./dev-on-aws
 
 # Verify — every MISS below means subsequent labs will break, raise hand
 cd ~/environment/dev-on-aws
@@ -115,7 +116,7 @@ for f in lab1/smoke_test.py lab3/seed.py lab4/handler.py \
          lab7/python/handler.py lab7/template.yaml; do
   [ -f "$f" ] &amp;&amp; echo "OK   $f" || echo "MISS $f"
 done</code></pre>
-  <p class="small">Every line should say <code>OK</code>. If any say <code>MISS</code>, the sync didn't land — raise your hand before continuing.</p>
+  <p class="small">Every line should say <code>OK</code>. If any say <code>MISS</code>, the clone didn't land — raise your hand before continuing. <code>~/environment</code> is Cloud9's persistent EBS home, so you only run this once.</p>
 </section>
 
 <section>

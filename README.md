@@ -161,16 +161,19 @@ dev_on_aws/
 
 ## Course-Files Distribution
 
-Before class starts, upload `labs/files/` to the course S3 bucket (the labs
-default to `s3://kiddcorp-class-materials/dev-on-aws/labs/files/`):
+Course materials live in the public GitHub repo
+[**jwkidd3/dev_on_aws**](https://github.com/jwkidd3/dev_on_aws). Lab 1a
+Step 4 has students clone it and copy the supporting files into their
+workspace:
 
 ```
-aws s3 sync labs/files/ s3://kiddcorp-class-materials/dev-on-aws/labs/files/
+cd ~/environment
+git clone https://github.com/jwkidd3/dev_on_aws
+cp -r dev_on_aws/labs/files ./dev-on-aws
 ```
 
-Lab 1a Step 4 pulls those files into each student's Cloud9 with a single
-`aws s3 sync` — every lab from then on opens files that are already on disk.
-No copy-paste of large blocks into a terminal.
+From then on, every lab opens files that are already on disk under
+`~/environment/dev-on-aws/`. No copy-paste of large blocks into a terminal.
 
 ## Prerequisites Students Should Bring
 
