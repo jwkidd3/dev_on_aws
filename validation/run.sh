@@ -42,6 +42,18 @@ pass() { printf "  \033[32m✅\033[0m  %s\n" "$1"; PASS=$((PASS+1)); }
 fail() { printf "  \033[31m❌\033[0m  %s — %s\n" "$1" "$2"; FAIL=$((FAIL+1)); }
 step() { echo; printf "\033[1m── %s ──\033[0m\n" "$1"; }
 
+# Run an AWS (or any) command, capturing stderr so we can surface the
+# real reason a check failed instead of a generic "non-zero".
+# Usage: try "description" aws iam create-role ...
+try() {
+  local desc="$1"; shift
+  local err; err=$("$@" 2>&1 >/dev/null) && { pass "$desc"; return 0; }
+  # Truncate long multi-line errors to one readable line
+  err=$(printf '%s' "$err" | tr '\n' ' ' | head -c 220)
+  fail "$desc" "${err:-non-zero}"
+  return 1
+}
+
 # Tracked resources (for cleanup)
 BUCKET_UPLOADS=""; BUCKET_SITE=""; TABLE=""; LAMBDA_ROLE=""; LAMBDA_FN=""
 REST_API=""; POOL_ID=""; SAM_STACK=""; PROBE_BUCKET=""
@@ -49,12 +61,19 @@ REST_API=""; POOL_ID=""; SAM_STACK=""; PROBE_BUCKET=""
 empty_versioned_bucket() {
   # Delete every version AND delete-marker from a bucket, then the bucket itself.
   local B="$1"
-  aws s3api list-object-versions --bucket "$B" --output json 2>/dev/null \
-    | python3 -c '
+  local RAW
+  RAW=$(aws s3api list-object-versions --bucket "$B" --output json 2>/dev/null) || RAW=""
+  if [ -n "$RAW" ]; then
+    printf '%s' "$RAW" | python3 -c '
 import json, sys, subprocess
-data = json.load(sys.stdin)
+raw = sys.stdin.read().strip()
+if not raw:
+    sys.exit(0)
+try:
+    data = json.loads(raw)
+except Exception:
+    sys.exit(0)
 items = (data.get("Versions") or []) + (data.get("DeleteMarkers") or [])
-# Chunk into batches of 1000 (DeleteObjects limit)
 for i in range(0, len(items), 1000):
     batch = items[i:i+1000]
     payload = {"Objects":[{"Key":x["Key"],"VersionId":x["VersionId"]} for x in batch],
@@ -63,6 +82,7 @@ for i in range(0, len(items), 1000):
                     "--delete",json.dumps(payload)],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 ' "$B" 2>/dev/null || true
+  fi
   aws s3 rb "s3://$B" --force >/dev/null 2>&1
 }
 
@@ -177,10 +197,10 @@ aws s3api put-bucket-versioning --bucket "$BUCKET_UPLOADS" \
   && pass "enable versioning" \
   || fail "versioning" "non-zero"
 
-echo "hello" | aws s3api put-object --bucket "$BUCKET_UPLOADS" --key "hello.txt" \
-  --body /dev/stdin --metadata "owner=validator" >/dev/null 2>&1 \
-  && pass "put-object with metadata" \
-  || fail "put-object" "non-zero"
+echo "hello" > "$TMP/hello.txt"
+try "put-object with metadata" \
+  aws s3api put-object --bucket "$BUCKET_UPLOADS" --key "hello.txt" \
+    --body "$TMP/hello.txt" --metadata "owner=validator"
 
 aws s3api head-object --bucket "$BUCKET_UPLOADS" --key "hello.txt" \
   --query 'Metadata.owner' --output text 2>/dev/null | grep -q validator \
@@ -263,15 +283,13 @@ cat > "$TMP/trust.json" <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow",
  "Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}
 EOF
-aws iam create-role --role-name "$LAMBDA_ROLE" \
-  --assume-role-policy-document file://"$TMP/trust.json" >/dev/null 2>&1 \
-  && pass "create-role $LAMBDA_ROLE" \
-  || fail "create-role" "non-zero"
+try "create-role $LAMBDA_ROLE" \
+  aws iam create-role --role-name "$LAMBDA_ROLE" \
+    --assume-role-policy-document "file://$TMP/trust.json"
 
-aws iam attach-role-policy --role-name "$LAMBDA_ROLE" \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole >/dev/null 2>&1 \
-  && pass "attach AWSLambdaBasicExecutionRole" \
-  || fail "attach policy" "non-zero"
+try "attach AWSLambdaBasicExecutionRole" \
+  aws iam attach-role-policy --role-name "$LAMBDA_ROLE" \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
 # Inline policy equivalent to lab4/lambda-perms.json
 cat > "$TMP/perms.json" <<EOF
@@ -283,16 +301,13 @@ cat > "$TMP/perms.json" <<EOF
   "Action":["s3:GetObject","s3:PutObject"],
   "Resource":"arn:aws:s3:::$BUCKET_UPLOADS/*"}]}
 EOF
-aws iam put-role-policy --role-name "$LAMBDA_ROLE" \
-  --policy-name LambdaAppAccess \
-  --policy-document file://"$TMP/perms.json" >/dev/null 2>&1 \
-  && pass "put-role-policy LambdaAppAccess (sed pattern equivalent)" \
-  || fail "inline policy" "non-zero"
+try "put-role-policy LambdaAppAccess (sed pattern equivalent)" \
+  aws iam put-role-policy --role-name "$LAMBDA_ROLE" \
+    --policy-name LambdaAppAccess \
+    --policy-document "file://$TMP/perms.json"
 
-# Wait for IAM propagation
-sleep 10
-
-# Package a minimal handler
+# IAM propagation — new roles need ~10-30s before Lambda can assume them.
+# Retry create-function with backoff instead of a blind sleep.
 cat > "$TMP/handler.py" <<'EOF'
 import json
 def handler(event, ctx):
@@ -301,17 +316,33 @@ EOF
 ( cd "$TMP" && zip -q function.zip handler.py )
 
 LAMBDA_FN="lab4-${PREFIX}"
-aws lambda create-function --function-name "$LAMBDA_FN" \
-  --runtime python3.12 --architectures arm64 \
-  --role "arn:aws:iam::$ACCT:role/$LAMBDA_ROLE" \
-  --handler handler.handler \
-  --zip-file "fileb://$TMP/function.zip" \
-  --timeout 10 --memory-size 256 >/dev/null 2>&1 \
-  && pass "create-function $LAMBDA_FN" \
-  || fail "create-function" "non-zero"
+created=0
+for delay in 5 10 15 20 25; do
+  sleep "$delay"
+  if aws lambda create-function --function-name "$LAMBDA_FN" \
+        --runtime python3.12 --architectures arm64 \
+        --role "arn:aws:iam::$ACCT:role/$LAMBDA_ROLE" \
+        --handler handler.handler \
+        --zip-file "fileb://$TMP/function.zip" \
+        --timeout 10 --memory-size 256 >/dev/null 2>&1; then
+    created=1; break
+  fi
+done
+[ "$created" = 1 ] \
+  && pass "create-function $LAMBDA_FN (after IAM propagation)" \
+  || fail "create-function" "role still not assumable after retries"
 
-sleep 3  # function state → Active
-aws lambda wait function-active-v2 --function-name "$LAMBDA_FN" 2>/dev/null \
+# function-active waiter — v2 is preferred but the older name also works
+wait_lambda_active() {
+  aws lambda wait function-active-v2 --function-name "$1" 2>/dev/null \
+    || aws lambda wait function-active --function-name "$1" 2>/dev/null
+}
+wait_lambda_updated() {
+  aws lambda wait function-updated-v2 --function-name "$1" 2>/dev/null \
+    || aws lambda wait function-updated --function-name "$1" 2>/dev/null
+}
+
+wait_lambda_active "$LAMBDA_FN" \
   && pass "function reached Active" \
   || fail "function-active waiter" "timeout"
 
@@ -326,19 +357,24 @@ aws lambda update-function-configuration --function-name "$LAMBDA_FN" \
   && pass "enable X-Ray tracing" \
   || fail "tracing on" "non-zero"
 
+# CRITICAL: after update-function-configuration the function is InProgress;
+# publish-version / create-alias will fail with ResourceConflictException unless
+# we wait for the update to finish.
+wait_lambda_updated "$LAMBDA_FN" >/dev/null 2>&1
+
 aws iam attach-role-policy --role-name "$LAMBDA_ROLE" \
   --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess >/dev/null 2>&1 \
   && pass "attach AWSXRayDaemonWriteAccess" \
   || fail "xray policy" "non-zero"
 
 # Versioning + alias (Lab 4b Step 6)
-sleep 3  # allow config update to settle
 V=$(aws lambda publish-version --function-name "$LAMBDA_FN" \
     --query Version --output text 2>/dev/null) \
+  && [ -n "$V" ] && [ "$V" != "None" ] \
   && pass "publish-version = $V" \
   || fail "publish-version" "non-zero"
 
-if [ -n "$V" ]; then
+if [ -n "$V" ] && [ "$V" != "None" ]; then
   aws lambda create-alias --function-name "$LAMBDA_FN" \
     --name prod --function-version "$V" >/dev/null 2>&1 \
     && pass "create-alias prod -> $V" \
@@ -372,12 +408,11 @@ if [ -n "$REST_API" ]; then
     >/dev/null 2>&1 \
     && pass "put-integration AWS_PROXY" || fail "put-integration" "non-zero"
 
-  aws lambda add-permission --function-name "$LAMBDA_FN" \
-    --statement-id "apigw-$STAMP" \
-    --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:$REGION:$ACCT:$REST_API/*/POST/items" \
-    >/dev/null 2>&1 \
-    && pass "add-permission (apigw invoke)" || fail "add-permission" "non-zero"
+  try "add-permission (apigw invoke)" \
+    aws lambda add-permission --function-name "$LAMBDA_FN" \
+      --statement-id "apigw-$STAMP" \
+      --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+      --source-arn "arn:aws:execute-api:$REGION:$ACCT:$REST_API/*/POST/items"
 
   aws apigateway create-deployment --rest-api-id "$REST_API" --stage-name dev \
     >/dev/null 2>&1 \
@@ -442,9 +477,14 @@ if [ $SKIP_SAM -eq 0 ]; then
     fail "sam CLI" "not installed — pass --skip-sam to bypass"
   else
     SAM_DIR="$TMP/sam"
-    mkdir -p "$SAM_DIR/python"
-    cp "$(dirname "$0")/../labs/files/lab7/template.yaml" "$SAM_DIR/template.yaml" 2>/dev/null || {
-      # fallback: minimal template
+    LAB7="$(cd "$(dirname "$0")/.." && pwd)/labs/files/lab7"
+    if [ -d "$LAB7" ]; then
+      mkdir -p "$SAM_DIR"
+      cp "$LAB7/template.yaml" "$SAM_DIR/template.yaml"
+      cp -r "$LAB7/python" "$SAM_DIR/python"   # includes handler.py + requirements.txt
+    else
+      # Fallback — minimal standalone project
+      mkdir -p "$SAM_DIR/python"
       cat > "$SAM_DIR/template.yaml" <<'EOF'
 Transform: AWS::Serverless-2016-10-31
 Parameters:
@@ -465,12 +505,11 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref ItemsTable }
 EOF
-    }
-    cp "$(dirname "$0")/../labs/files/lab7/python/handler.py" "$SAM_DIR/python/handler.py" 2>/dev/null || \
       echo "def handler(e,c): return {'statusCode':200,'body':'ok'}" > "$SAM_DIR/python/handler.py"
+    fi
 
-    (cd "$SAM_DIR" && sam build >/dev/null 2>&1) \
-      && pass "sam build" || fail "sam build" "non-zero"
+    try "sam build (fetches requirements.txt)" \
+      bash -c "cd '$SAM_DIR' && sam build"
 
     SAM_STACK="sam-${PREFIX}"
     (cd "$SAM_DIR" && sam deploy \

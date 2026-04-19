@@ -167,10 +167,22 @@ done
 
 # ----- CloudWatch log groups -----
 step "CloudWatch log groups: /aws/lambda/lab4-labval-*, /aws/apigateway/labval-*"
+list_log_groups() {
+  # Robust: JSON → Python, no --output text pagination surprises
+  aws logs describe-log-groups --log-group-name-prefix "$1" --output json 2>/dev/null \
+    | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    for g in d.get("logGroups", []) or []:
+        n = g.get("logGroupName")
+        if n: print(n)
+except Exception:
+    pass'
+}
 for PFX in "/aws/lambda/lab4-labval-" "/aws/apigateway/labval-"; do
-  GROUPS=$(aws logs describe-log-groups --log-group-name-prefix "$PFX" \
-    --query "logGroups[].logGroupName" --output text 2>/dev/null)
-  for G in $GROUPS; do
+  while IFS= read -r G; do
+    [ -z "$G" ] && continue
     FOUND=$((FOUND+1))
     info "log-group $G"
     if do_delete; then
@@ -178,7 +190,7 @@ for PFX in "/aws/lambda/lab4-labval-" "/aws/apigateway/labval-"; do
         && ok "delete-log-group $G" \
         || nope "delete-log-group $G" "non-zero"
     fi
-  done
+  done < <(list_log_groups "$PFX")
 done
 
 echo
