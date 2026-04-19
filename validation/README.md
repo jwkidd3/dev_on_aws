@@ -60,9 +60,49 @@ RESULT: 37 passed, 0 failed
 
 A `trap cleanup EXIT` deletes every resource the script created, in reverse
 order of creation. Cleanup runs even if the script is interrupted (`Ctrl-C`)
-or a middle step fails. If a cleanup step fails (rare; usually because a
-prior step never got that far), the script reports it as a failed cleanup —
-check the AWS console and delete by hand if needed.
+or a middle step fails.
+
+What cleanup removes:
+
+- CloudFormation stack (`sam delete` equivalent via `cfn delete-stack`)
+- Cognito user pool (and implicitly the app client + user + authorizer on it)
+- API Gateway REST API (and implicitly its resources, methods, stage, deployment)
+- Lambda function (and implicitly its versions, aliases, resource policies)
+- `/aws/lambda/<function-name>` and `/aws/apigateway/<prefix>` log groups
+- Lambda execution role — inline policy `LambdaAppAccess` removed, both
+  managed policies (`AWSLambdaBasicExecutionRole` and
+  `AWSXRayDaemonWriteAccess`) detached, then the role itself deleted
+- DynamoDB table (and its GSI)
+- Every S3 bucket created, including the versioned uploads bucket —
+  the helper enumerates every object version + delete marker and removes them
+  in batches of 1000 before calling `s3 rb`
+- The `/tmp` scratch directory used for heredocs
+
+What cleanup intentionally does **not** remove:
+- The SAM-managed artifact bucket (`aws-sam-cli-managed-default-*`). It's a
+  shared, per-account bucket that real deployments also reuse; leaving it
+  avoids breaking subsequent runs and it costs fractions of a cent per month.
+
+If a cleanup step fails (rare; usually because a prior step never got that
+far), the script reports it as a failed cleanup — check the AWS console and
+delete by hand if needed, or use the orphan sweeper below.
+
+## Cleaning up from earlier runs
+
+If a previous `run.sh` was interrupted or its cleanup trap didn't get to
+everything, use the sweeper:
+
+```bash
+./cleanup-orphans.sh            # dry run — lists what it would delete
+./cleanup-orphans.sh --delete   # actually deletes
+```
+
+It finds every resource whose name starts with `labval-` across:
+CloudFormation stacks (`sam-labval-*`), Cognito user pools, API Gateway REST
+APIs, Lambda functions (`lab4-labval-*`), IAM roles
+(`StudentLambdaRole-labval-*`), DynamoDB tables (`Items-labval-*`), S3 buckets,
+and CloudWatch log groups (`/aws/lambda/lab4-labval-*`,
+`/aws/apigateway/labval-*`). Same versioned-bucket handling as `run.sh`.
 
 ## Cost
 

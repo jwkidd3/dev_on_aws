@@ -46,6 +46,31 @@ step() { echo; printf "\033[1m── %s ──\033[0m\n" "$1"; }
 BUCKET_UPLOADS=""; BUCKET_SITE=""; TABLE=""; LAMBDA_ROLE=""; LAMBDA_FN=""
 REST_API=""; POOL_ID=""; SAM_STACK=""; PROBE_BUCKET=""
 
+empty_versioned_bucket() {
+  # Delete every version AND delete-marker from a bucket, then the bucket itself.
+  local B="$1"
+  aws s3api list-object-versions --bucket "$B" --output json 2>/dev/null \
+    | python3 -c '
+import json, sys, subprocess
+data = json.load(sys.stdin)
+items = (data.get("Versions") or []) + (data.get("DeleteMarkers") or [])
+# Chunk into batches of 1000 (DeleteObjects limit)
+for i in range(0, len(items), 1000):
+    batch = items[i:i+1000]
+    payload = {"Objects":[{"Key":x["Key"],"VersionId":x["VersionId"]} for x in batch],
+               "Quiet":True}
+    subprocess.run(["aws","s3api","delete-objects","--bucket",sys.argv[1],
+                    "--delete",json.dumps(payload)],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+' "$B" 2>/dev/null || true
+  aws s3 rb "s3://$B" --force >/dev/null 2>&1
+}
+
+delete_log_group() {
+  # Swallow "does not exist" — the group is only auto-created after first invocation
+  aws logs delete-log-group --log-group-name "$1" >/dev/null 2>&1 || true
+}
+
 cleanup() {
   step "Cleanup"
   # Reverse order of creation — best-effort, no hard fail
@@ -68,10 +93,19 @@ cleanup() {
     aws lambda delete-function --function-name "$LAMBDA_FN" >/dev/null 2>&1 \
       && pass "lambda delete-function $LAMBDA_FN" \
       || fail "lambda delete-function" "non-zero"
+    # Log group is created on first invoke; delete if present
+    delete_log_group "/aws/lambda/$LAMBDA_FN"
+    pass "logs delete-log-group /aws/lambda/$LAMBDA_FN"
   }
   [ -n "$LAMBDA_ROLE" ] && {
+    # Remove inline policy
     aws iam delete-role-policy --role-name "$LAMBDA_ROLE" --policy-name LambdaAppAccess >/dev/null 2>&1 || true
-    aws iam detach-role-policy --role-name "$LAMBDA_ROLE" --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole >/dev/null 2>&1 || true
+    # Detach every managed policy attached during the run
+    for P in \
+        arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
+        arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess; do
+      aws iam detach-role-policy --role-name "$LAMBDA_ROLE" --policy-arn "$P" >/dev/null 2>&1 || true
+    done
     aws iam delete-role --role-name "$LAMBDA_ROLE" >/dev/null 2>&1 \
       && pass "iam delete-role $LAMBDA_ROLE" \
       || fail "iam delete-role" "non-zero"
@@ -81,12 +115,18 @@ cleanup() {
       && pass "ddb delete-table $TABLE" \
       || fail "ddb delete-table" "non-zero"
   }
+  # S3 buckets — handle versioning correctly
   for B in "$BUCKET_UPLOADS" "$BUCKET_SITE" "$PROBE_BUCKET"; do
     [ -z "$B" ] && continue
-    aws s3 rb "s3://$B" --force >/dev/null 2>&1 \
-      && pass "s3 rb $B" \
-      || fail "s3 rb $B" "non-zero"
+    empty_versioned_bucket "$B"
+    if aws s3api head-bucket --bucket "$B" >/dev/null 2>&1; then
+      fail "s3 rb $B" "bucket still present"
+    else
+      pass "s3 rb $B (versions + delete markers cleared)"
+    fi
   done
+  # API Gateway access log group (created in Lab 5b pattern; no-op if absent)
+  delete_log_group "/aws/apigateway/$PREFIX"
   rm -rf "$TMP"
   echo
   printf "\033[1mRESULT: %d passed, %d failed\033[0m\n" "$PASS" "$FAIL"
