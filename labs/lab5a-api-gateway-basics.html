@@ -117,20 +117,7 @@
 </section>
 
 <section>
-  <h2>Step 6 — Call It from Cloud9 <span class="time">5 min</span></h2>
-  <pre><code># In Cloud9 terminal — $API_ID already set in Step 1
-URL="https://$API_ID.execute-api.us-east-1.amazonaws.com/dev/items"
-echo "export URL=$URL" &gt;&gt; ~/.dev-on-aws.env
-source ~/.dev-on-aws.env
-
-curl -i -X POST $URL \
-     -H "Content-Type: application/json" \
-     -d '{"name":"Cloud9"}'</code></pre>
-  <p class="small">Expect HTTP 200 and your Lambda's JSON body.</p>
-</section>
-
-<section>
-  <h2>Step 7 — Capture the IDs for Lab 5b <span class="time">5 min</span></h2>
+  <h2>Step 6 — Capture the IDs for Downstream Labs <span class="time">5 min</span></h2>
   <pre><code>API_ID=$(aws apigateway get-rest-apis \
     --query "items[?name=='dev-on-aws-$USER_ID'].id" -o text)
 ITEMS_ID=$(aws apigateway get-resources --rest-api-id $API_ID \
@@ -144,7 +131,22 @@ export API_ID=$API_ID
 export ITEMS_ID=$ITEMS_ID
 export ACCT=$ACCT
 export LAMBDA_ARN=$LAMBDA_ARN
-EOF</code></pre>
+EOF
+source ~/.dev-on-aws.env</code></pre>
+  <p class="small">Labs 6b / 7a / 7b all reference <code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$ACCT</code>, <code>$LAMBDA_ARN</code>.</p>
+</section>
+
+<section>
+  <h2>Step 7 — Call It from Cloud9 <span class="time">5 min</span></h2>
+  <pre><code># $API_ID was exported in Step 6 and is now live in this shell
+URL="https://$API_ID.execute-api.us-east-1.amazonaws.com/dev/items"
+echo "export URL=$URL" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env
+
+curl -i -X POST $URL \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Cloud9"}'</code></pre>
+  <p class="small">Expect HTTP 200 and your Lambda's JSON body.</p>
 </section>
 
 <section>

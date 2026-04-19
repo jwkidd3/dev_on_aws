@@ -56,8 +56,8 @@
 <section>
   <h2>Prerequisites <span class="time">3 min</span></h2>
   <ul>
-    <li>Labs 4a–4b, 5a–5b, 6a–6c complete</li>
-    <li>Function <code>lab4-user1</code> deployed, API live, ID token available</li>
+    <li>Labs 4a–4b, 5a, 6a–6c complete</li>
+    <li>Function <code>lab4-$USER_ID</code> deployed, API live, <code>$ID_TOKEN</code> available</li>
   </ul>
 </section>
 
@@ -103,7 +103,8 @@ aws apigateway update-stage \
 <section>
   <h2>Step 4 — Redeploy &amp; Fire <span class="time">7 min</span></h2>
   <pre><code>cd ~/environment/dev-on-aws/lab4
-zip -r function.zip handler.py aws_xray_sdk/ wrapt/ requirements.txt
+# Zip the handler + every vendored dependency pip just installed
+zip -qr function.zip . -x '*.dist-info/*' -x '__pycache__/*'
 
 aws lambda update-function-code \
     --function-name lab4-$USER_ID \
@@ -124,7 +125,7 @@ done</code></pre>
     <li>Click Lambda node → see response-time histogram</li>
     <li>Click a trace → see segments and subsegments</li>
   </ol>
-  <p class="small">We'll dig deeper in Lab 7c.</p>
+  <p class="small">Lab 7b redeploys this same handler via SAM and confirms the trace map end-to-end.</p>
 </section>
 
 <section>

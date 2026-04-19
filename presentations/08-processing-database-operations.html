@@ -86,7 +86,7 @@ for item in resp["Items"]:
 <section>
   <h2>Batch &amp; Transaction</h2>
   <ul>
-    <li><strong>BatchGetItem / BatchWriteItem</strong> — up to 25 writes / 100 gets per call; retry <code>UnprocessedItems</code></li>
+    <li><strong>BatchGetItem</strong> (up to 100 items) / <strong>BatchWriteItem</strong> (up to 25 items) — retry <code>UnprocessedItems</code></li>
     <li><strong>TransactWriteItems</strong> — up to 100 actions, all-or-nothing, costs 2× WCU</li>
     <li>Use transactions only when "two items must change together"</li>
   </ul>

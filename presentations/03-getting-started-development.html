@@ -106,23 +106,13 @@ for b in boto3.client("s3").list_buckets()["Buckets"]:
 <section>
   <h2>AWS Cloud9 — Our Class IDE</h2>
   <ul>
-    <li>Browser-based IDE that runs on an EC2 instance in your account</li>
-    <li>AWS CLI, Python, <code>git</code>, <code>jq</code>, Docker, SAM CLI — all pre-installed</li>
-    <li>Authenticates through the instance IAM role — no <code>aws configure</code>, no access keys on your laptop</li>
-    <li>Every student has a Cloud9 environment waiting in the class account</li>
+    <li>Browser-based IDE running on an EC2 instance in the class account</li>
+    <li>Pre-installed: AWS CLI, Python, <code>git</code>, <code>jq</code>, Docker, SAM CLI</li>
+    <li>Authenticates via the instance IAM role — no <code>aws configure</code>, no keys on your laptop</li>
+    <li>Same environment for every student — no "works on my laptop" drift</li>
+    <li>Work persists on EBS between days; URL is shareable for pair-debugging</li>
   </ul>
-  <p class="small">In this course, every lab is done inside Cloud9. Your laptop just needs a browser.</p>
-</section>
-
-<section>
-  <h2>Why Cloud9 for the Class</h2>
-  <ul>
-    <li>Identical environment for every student — no "works on my laptop"</li>
-    <li>Credentials never leave AWS — the instance role rotates tokens automatically</li>
-    <li>Shareable URLs for pair-debugging</li>
-    <li>Your work is persisted on EBS between days</li>
-  </ul>
-  <p class="small">Outside this class, local VS Code + JetBrains IDEs + AWS Toolkit remain first-class choices for real projects.</p>
+  <p class="small">Outside class, local VS Code + JetBrains with the AWS Toolkit remain first-class choices for real projects.</p>
 </section>
 
 <section data-background-color="#146EB4">

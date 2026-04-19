@@ -62,7 +62,7 @@
 
 <section>
   <h2>Step 1 — Create the Site Bucket <span class="time">6 min</span></h2>
-  <pre><code>SITE=student-user1-site-$(date +%Y%m%d)
+  <pre><code>SITE=student-$USER_ID-site-$(date +%Y%m%d)
 aws s3 mb s3://$SITE
 
 aws s3api put-public-access-block --bucket $SITE \

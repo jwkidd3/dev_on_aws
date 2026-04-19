@@ -151,12 +151,12 @@ dev_on_aws/
 ├── labs/                    ← 15 hands-on lab decks
 │   ├── lab1a-signin-orientation.html
 │   └── … 14 more …
-└── labs/files/              ← source files students sync into Cloud9
-    ├── lab1/  (smoke_test.py, Program.cs, SmokeTest.java)
+└── labs/files/              ← source files students clone via GitHub in Lab 1a
+    ├── lab1/  (smoke_test.py)
     ├── lab3/  (seed.py, bulk_load.py)
     ├── lab4/  (handler.py, lambda-perms.json, notify.json)
     ├── lab6/  (add_methods.sh, site-policy.json, web/*.html)
-    └── lab7/  (template.yaml, python/handler.py)
+    └── lab7/  (template.yaml, python/handler.py, python/requirements.txt)
 ```
 
 ## Course-Files Distribution
