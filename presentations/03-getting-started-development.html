@@ -44,16 +44,17 @@
 </section>
 
 <section>
-  <h2>The Python SDK (Preinstalled in Cloud9)</h2>
-  <pre><code># In your Cloud9 terminal — boto3 is already on the image.
-pip show boto3   # confirm
+  <h2>The Python SDK — boto3</h2>
+  <pre><code># Amazon Linux 2023 ships Python 3 + pip, but NOT boto3.
+# Install once per Cloud9 environment:
+pip3 install --user boto3
 
-# Add to a project
-pip install boto3
+python3 -c "import boto3; print(boto3.__version__)"
+# → 1.x.x
 
-# CLI is always there too
+# The AWS CLI is preinstalled:
 aws --version</code></pre>
-  <p class="small">This course uses <code>boto3</code>, the AWS SDK for Python.</p>
+  <p class="small">This course uses <code>boto3</code>, the AWS SDK for Python. Lab 1a installs it once; Cloud9's EBS home keeps it across days.</p>
 </section>
 
 <section>
