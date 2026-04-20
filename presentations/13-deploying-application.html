@@ -23,7 +23,10 @@
   .reveal .small { font-size: 0.7em; color:#555; }
   .reveal section[data-background-color] h2,
   .reveal section[data-background-color] p,
-  .reveal section[data-background-color] li { color:#fff; }</style>
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
 </head>
 <body>
 <div class="reveal"><div class="slides">
@@ -126,6 +129,16 @@ sam deploy --guided
       Type: Canary10Percent5Minutes
       Alarms: [!Ref ErrorsAlarm]</code></pre>
   <p class="small">SAM publishes a new version, alias points at old, CodeDeploy shifts 10% for 5 min watching the alarm. Rollback is automatic on alarm fire.</p>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab · 55 min</span>
+  <h2>🚀 Lab 7b</h2>
+  <ul>
+    <li><strong>SAM, Trace Map &amp; Cleanup.</strong> <code>sam build</code> + guided <code>sam deploy</code>, iterate with an in-place redeploy, verify resources in each console, <code>sam delete</code>.</li>
+  </ul>
+  <p class="small">Pairs with Lab 7a (X-Ray) from Module 14 — the SAM template deploys the X-Ray-instrumented handler.</p>
+  <p class="small"><code>labs/lab7b-*.html</code></p>
 </section>
 
 <section data-background-color="#146EB4">

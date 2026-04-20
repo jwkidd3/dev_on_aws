@@ -30,6 +30,30 @@ Software developers, solution architects, and IT professionals with:
 - **Credentials:** Cloud9's default **AWS Managed Temporary Credentials (AMTC)** block a handful of IAM/STS/Lambda calls the labs need. In **Lab 1a** students attach **`LabRole`** to the Cloud9 EC2 instance and **turn AMTC off** so the SDK/CLI pick up the role via IMDS — no `aws configure`, no access keys on laptops.
 - **Editor vs. terminal:** class convention set in Lab 1a — source/config files are authored in the Cloud9 **editor**; commands ≤ ~5 lines go into the **terminal**. Never paste multi-line source into a shell prompt.
 
+## Module → Lab Map
+
+Which labs each teaching module sets up. Modules without labs are pure concept / recap. Labs always follow their paired module on the schedule (same day).
+
+| # | Module | Lab(s) it sets up | Day |
+| -- | ------ | ----------------- | --- |
+| 1  | Course Overview                         | — (kickoff)        | 1 |
+| 2  | Building a Web Application on AWS       | — (architecture)   | 1 |
+| 3  | Getting Started with Development on AWS | **1a, 1b**         | 1 |
+| 4  | Getting Started with Permissions        | **1c**             | 1 |
+| 5  | Getting Started with Storage            | — (paired w/ M6)   | 1 |
+| 6  | Processing Your Storage Operations      | **2a, 2b**         | 1 |
+| 7  | Getting Started with Databases          | — (paired w/ M8)   | 2 |
+| 8  | Processing Your Database Operations     | **3a, 3b**         | 2 |
+| 9  | Processing Your Application Logic       | **4a, 4b**         | 2 |
+| 10 | Managing the APIs                       | **5a**             | 2 |
+| 11 | Building a Modern Application           | — (integration)    | 3 |
+| 12 | Granting Access to Application Users    | **6a, 6b, 6c**     | 3 |
+| 13 | Deploying Your Application              | **7b**             | 3 |
+| 14 | Observing Your Application              | **7a**             | 3 |
+| 15 | Course Wrap-up                          | —                  | 3 |
+
+Labs 7a and 7b are done back-to-back on Day 3: **7a** (X-Ray instrumentation, paired with M14) deposits the instrumented handler that **7b** (SAM deploy, paired with M13) then deploys via CloudFormation.
+
 ## Console vs. SDK Labs
 
 | Service     | Console lab | SDK / CLI lab(s)                                 |
@@ -56,17 +80,17 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | 09:55 – 10:10 | *Break*                                          | 15 min |
 | 10:10 – 10:30 | [M4 — Getting Started with Permissions](presentations/04-getting-started-permissions.html) | 20 min |
 | 10:30 – 11:00 | **[Lab 1a — Sign In & Create Your Cloud9 Environment](labs/lab1a-signin-orientation.html)** | 30 min |
-| 11:00 – 11:35 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 35 min |
-| 11:35 – 12:20 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
-| 12:20 – 13:20 | *Lunch*                                          | 60 min |
-| 13:20 – 13:32 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
-| 13:32 – 13:45 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
-| 13:45 – 14:00 | *Break*                                          | 15 min |
-| 14:00 – 14:45 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
-| 14:45 – 15:30 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
-| 15:30 – 16:00 | *Day-1 wrap / Q&A*                                | 30 min |
+| 11:00 – 11:30 | **[Lab 1b — First SDK Call in Cloud9](labs/lab1b-cli-sdk-profile.html)** | 30 min |
+| 11:30 – 12:15 | **[Lab 1c — IAM Policy Authoring](labs/lab1c-iam-policy.html)** | 45 min |
+| 12:15 – 13:15 | *Lunch*                                          | 60 min |
+| 13:15 – 13:27 | [M5 — Getting Started with Storage](presentations/05-getting-started-storage.html) | ~12 min |
+| 13:27 – 13:40 | [M6 — Processing Your Storage Operations](presentations/06-processing-storage-operations.html) | ~13 min |
+| 13:40 – 13:55 | *Break*                                          | 15 min |
+| 13:55 – 14:40 | **[Lab 2a — S3 in the Console](labs/lab2a-s3-crud.html)** | 45 min |
+| 14:40 – 15:25 | **[Lab 2b — S3 via SDK & Presigned URLs](labs/lab2b-s3-presigned.html)** | 45 min |
+| 15:25 – 16:00 | *Day-1 wrap / Q&A*                                | 35 min |
 
-**Day 1 totals:** lecture 100 min · lab 200 min · **lab share 67%**
+**Day 1 totals:** lecture 100 min · lab 195 min · **lab share 66%**
 
 ### Day 2 — Data & Logic
 
@@ -113,9 +137,9 @@ Class runs **09:00 – 16:00** each day (7 h). Lunch 60 min, two 15-min breaks.
 | Metric                     | Time           |
 | -------------------------- | -------------- |
 | Lecture (15 modules)       | 4h 35m         |
-| **Hands-on lab (15 labs)** | **11h 0m**     |
-| Total working time         | 15h 35m        |
-| **Lab share**              | **~71%** ✓     |
+| **Hands-on lab (15 labs)** | **10h 55m**    |
+| Total working time         | 15h 30m        |
+| **Lab share**              | **~70%** ✓     |
 
 ## Lab Dependency Chain
 
@@ -128,7 +152,7 @@ vars to `~/.dev-on-aws.env`:
 ```
 1a  (REQUIRED — Cloud9 + LabRole + repo clone)
  ↓
-1b → 1c            bootstrap.sh 1b|1c → env vars
+1b → 1c            bootstrap.sh 1b → env vars
  ↓
 2a → 2b            bootstrap.sh 2a|2b → env vars
  ↓
@@ -163,7 +187,8 @@ dev_on_aws/
 └── labs/files/              ← source files students clone via GitHub in Lab 1a
     ├── bootstrap.sh          ← "catch me up" setup for any lab
     ├── lab1/  (smoke_test.py)
-    ├── lab3/  (seed.py, bulk_load.py)
+    ├── lab2/  (seed.py, process.py, make_get_url.py, make_put_url.py)
+    ├── lab3/  (seed.py, bulk_load.py, query_filter.py, query_gsi.py, update_conditional.py, scan_demo.py)
     ├── lab4/  (handler.py, lambda-perms.json, notify.json)
     ├── lab6/  (add_methods.sh, site-policy.json, web/*.html)
     └── lab7/  (template.yaml, python/handler.py, python/requirements.txt)

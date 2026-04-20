@@ -100,6 +100,7 @@
 
 <section>
   <h2>Step 3 — JSON Payload <span class="time">5 min</span></h2>
+  <p class="small"><strong>Replace <code>$USER_ID</code> with your actual user id before pasting</strong> — the DynamoDB Console does not expand shell variables. Example: <code>USER#user1</code>.</p>
   <pre><code>{
   "pk":       { "S": "USER#$USER_ID" },
   "sk":       { "S": "ITEM#002" },
@@ -115,7 +116,7 @@
   <h2>Step 4 — Run a Query <span class="time">5 min</span></h2>
   <ol>
     <li>Explore view → switch from <em>Scan</em> to <strong>Query</strong></li>
-    <li>Partition key: <code>pk = USER#user1</code></li>
+    <li>Partition key: <code>pk = USER#&lt;your-user-id&gt;</code> (e.g., <code>USER#user1</code>)</li>
     <li>Sort key: <code>begins_with ITEM#</code></li>
     <li><strong>Run</strong></li>
     <li>Scroll right — the returned <em>Read capacity units</em> tells you what the query cost</li>
@@ -145,6 +146,7 @@
 
 <section>
   <h2>Step 6 — PartiQL Statement <span class="time">5 min</span></h2>
+  <p class="small"><strong>Replace both <code>$USER_ID</code> tokens with your actual user id</strong> — the PartiQL editor does not expand shell vars. Example: <code>"Items-user1"</code> and <code>'USER#user1'</code>.</p>
   <pre><code>SELECT sk, title, price
 FROM   "Items-$USER_ID"
 WHERE  pk = 'USER#$USER_ID'

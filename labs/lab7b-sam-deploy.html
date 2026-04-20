@@ -82,14 +82,10 @@ ls -R
 
 <section>
   <h2>Step 2 — Build &amp; First Deploy <span class="time">7 min</span></h2>
-  <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 ships Python 3.9, so <code>sam build</code> needs either <code>python3.12</code> + its pip installed locally or <code>--use-container</code> (Docker):</p>
+  <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 Cloud9 ships Python 3.9, so <code>sam build</code> either needs Python 3.12 locally or an official AWS Docker builder image. Cloud9 has Docker preinstalled — use <code>--use-container</code>; it's the reliable path.</p>
   <pre><code>cd ~/environment/dev-on-aws/lab7
 
-# One-time: install the runtime AND its pip — SAM needs both
-sudo dnf install -y python3.12 python3.12-pip
-python3.12 -m pip --version   # sanity-check pip is wired up
-
-sam build
+sam build --use-container
 
 sam deploy --guided \
     --stack-name dev-on-aws-$USER_ID \
@@ -100,14 +96,18 @@ sam deploy --guided \
 #   UploadsBucket   = $BUCKET   (from Lab 2a)
 # Confirm IAM changes: y
 # Save arguments to samconfig.toml: y</code></pre>
-  <p class="small">If <code>dnf</code> can't install <code>python3.12</code>, run <code>sam build --use-container</code> instead — it builds inside an AWS-supplied Docker image that already has Python 3.12.</p>
+  <p class="small"><strong>No Docker available?</strong> Install Python 3.12 natively and retry: <code>sudo dnf install -y python3.12</code>, <code>python3.12 -m ensurepip --upgrade</code>, then <code>sam build</code> (without <code>--use-container</code>). The <code>python3.12-pip</code> package isn't in every AL2023 repo snapshot — <code>ensurepip</code> is the reliable bootstrap.</p>
   <p class="small">Creates an S3 bucket for artifacts (prefixed <code>aws-sam-cli-managed-default-</code>) on first use — acceptable in shared accounts.</p>
 </section>
 
 <section>
   <h2>Step 3 — Smoke the New Stack <span class="time">7 min</span></h2>
-  <p class="small"><code>sam deploy</code>'s final output lists the stack's <strong>Outputs</strong>, including <code>ApiUrl</code>. Copy that value:</p>
-  <pre><code>export API_URL="https://xxxx.execute-api.us-east-1.amazonaws.com/prod"
+  <p class="small">Derive the API URL from the stack's Outputs instead of hand-copying it from the terminal scrollback:</p>
+  <pre><code>export API_URL=$(aws cloudformation describe-stacks \
+    --stack-name dev-on-aws-$USER_ID \
+    --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue | [0]" \
+    --output text)
+echo "$API_URL"
 
 curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
      -H "Content-Type: application/json" \

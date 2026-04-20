@@ -81,7 +81,8 @@ source ~/.dev-on-aws.env</code></pre>
   <p class="small">Open <code>~/environment/dev-on-aws/lab6/site-policy.json</code> in the editor. Find/replace the three literal <code>BUCKET</code> tokens with your <code>$SITE</code> value (e.g., <code>student-user1-site-20260417</code>). Save.</p>
   <p class="small">Terminal: apply it.</p>
   <pre><code>aws s3api put-bucket-policy --bucket $SITE \
-    --policy file://~/environment/dev-on-aws/lab6/site-policy.json</code></pre>
+    --policy file://$HOME/environment/dev-on-aws/lab6/site-policy.json</code></pre>
+  <p class="small"><code>file://</code> URLs don't expand <code>~</code> — use <code>$HOME</code> (the shell expands that before the CLI sees it).</p>
 </section>
 
 <section>
@@ -93,48 +94,69 @@ echo "http://$SITE.s3-website-us-east-1.amazonaws.com"</code></pre>
 </section>
 
 <section>
-  <h2>Step 4 — Create via API <span class="time">5 min</span></h2>
+  <h2>Step 4 — Authorized Call <span class="time">5 min</span></h2>
   <pre><code># ID_TOKEN still valid from Lab 6a (1-hour lifetime)
-H="-H Authorization:$ID_TOKEN"
-
-curl -s $H -X POST $URL \
+curl -s -X POST $URL \
+  -H "Authorization: $ID_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Alice widget","price":9.99}' | jq .</code></pre>
-  <p class="small">Expect a 200 response with the item's presigned URL or ID from your Lambda.</p>
+  -d '{"title":"widget","price":9.99}' | jq .</code></pre>
+  <p class="small">Expect a <strong>200</strong> response with the Lambda's JSON (presigned URL + stored row). Then confirm DynamoDB has the new row:</p>
+  <pre><code>aws dynamodb scan --table-name Items-$USER_ID --limit 5 \
+    --query "Items[].{sk:sk.S, title:title.S, price:price.N}"</code></pre>
 </section>
 
 <section>
-  <h2>Step 5 — List &amp; Delete <span class="time">5 min</span></h2>
-  <pre><code># GET — list items for the authenticated user
-curl -s $H $URL | jq .
+  <h2>Step 5 — Prove the Authorizer Blocks <span class="time">5 min</span></h2>
+  <p class="small">The authorizer from Lab 6b protects the route. Without a valid token the request never reaches Lambda.</p>
+  <pre><code># No Authorization header at all → API Gateway rejects
+curl -s -o /dev/null -w "no token:       %{http_code}\n" \
+     -X POST $URL -H "Content-Type: application/json" \
+     -d '{"title":"x","price":1}'
 
-# Confirm the row in DynamoDB
-aws dynamodb scan --table-name Items-$USER_ID \
-   --filter-expression "pk = :p" \
-   --expression-attribute-values '{":p":{"S":"USER#'"$(echo $ID_TOKEN | cut -d. -f2 | base64 -d 2&gt;/dev/null | jq -r .sub)"'"}}'
+# Malformed token → rejected before Lambda runs
+curl -s -o /dev/null -w "bad token:      %{http_code}\n" \
+     -X POST $URL -H "Content-Type: application/json" \
+     -H "Authorization: not.a.real.jwt" \
+     -d '{"title":"x","price":1}'
 
-# DELETE — /items/{id} endpoint (replace with a real sk value you just created)
-curl -s $H -X DELETE "$URL/ITEM-123" -i</code></pre>
+# Valid token → 200
+curl -s -o /dev/null -w "valid token:    %{http_code}\n" \
+     -X POST $URL -H "Content-Type: application/json" \
+     -H "Authorization: $ID_TOKEN" \
+     -d '{"title":"x","price":1}'</code></pre>
+  <p class="small">Expected: <code>401</code>, <code>401</code> (or <code>403</code>), <code>200</code>. The 401s never touch your Lambda — API Gateway + the Cognito authorizer did the work.</p>
 </section>
 
 <section>
-  <h2>Step 6 — Per-User Isolation <span class="time">6 min</span></h2>
-  <pre><code># Create a second user (bob)
-aws cognito-idp admin-create-user --user-pool-id $POOL_ID \
+  <h2>Step 6 — Second User &amp; Claim Inspection <span class="time">6 min</span></h2>
+  <p class="small">Create a second user, sign them in, verify each user's token carries a distinct <code>sub</code> claim. Your app uses <code>sub</code> to key per-user data — the capstone handler stores it in DynamoDB; Lab 7a's instrumented handler annotates X-Ray traces with it.</p>
+  <pre><code>aws cognito-idp admin-create-user --user-pool-id $POOL_ID \
   --username bob@example.com \
   --user-attributes Name=email,Value=bob@example.com Name=email_verified,Value=true \
   --message-action SUPPRESS
 aws cognito-idp admin-set-user-password --user-pool-id $POOL_ID \
   --username bob@example.com --password 'Tr0picalStorm!' --permanent
 
-# Get Bob's JWT
 BOB_TOKEN=$(aws cognito-idp initiate-auth \
   --auth-flow USER_PASSWORD_AUTH --client-id $CLIENT_ID \
   --auth-parameters USERNAME=bob@example.com,PASSWORD='Tr0picalStorm!' \
-  | jq -r .AuthenticationResult.IdToken)
+  --query AuthenticationResult.IdToken --output text)
 
-# Bob GETs — should see NOTHING (no Alice items)
-curl -s -H "Authorization:$BOB_TOKEN" $URL | jq .</code></pre>
+# Compare each token's subject claim — they must differ
+for T in "$ID_TOKEN" "$BOB_TOKEN"; do
+  python3 -c "
+import base64, json, sys
+p = sys.argv[1].split('.')[1]
+p += '=' * (-len(p) % 4)   # restore JWT base64url padding
+print(json.loads(base64.urlsafe_b64decode(p))['sub'])
+" "$T"
+done
+
+# Bob can also call the API — same route, different sub on the server side
+curl -s -X POST $URL \
+  -H "Authorization: $BOB_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"bob widget","price":2.50}' | jq .</code></pre>
 </section>
 
 <section data-background-color="#146EB4">
@@ -150,9 +172,9 @@ curl -s -H "Authorization:$BOB_TOKEN" $URL | jq .</code></pre>
   <h2>Success Criteria <span class="time">3 min</span></h2>
   <ul>
     <li>✅ Site bucket serves a minimal landing page</li>
-    <li>✅ Authenticated POST / GET / DELETE work from Cloud9 <code>curl</code></li>
-    <li>✅ DynamoDB shows items keyed on the Cognito <code>sub</code></li>
-    <li>✅ Bob's token returns an empty item list — per-user isolation proven</li>
+    <li>✅ Authorized POST with <code>$ID_TOKEN</code> returns 200 and writes to DynamoDB</li>
+    <li>✅ Missing or malformed Authorization header returns 401/403 — request never reaches Lambda</li>
+    <li>✅ Alice's and Bob's tokens carry distinct <code>sub</code> claims</li>
   </ul>
 </section>
 

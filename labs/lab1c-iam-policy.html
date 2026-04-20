@@ -65,11 +65,12 @@
 <section>
   <h2>Step 1 — Test a Denied Call <span class="time">7 min</span></h2>
   <pre><code>aws iam create-user \
-    --user-name test-user-blocked </code></pre>
+    --user-name test-blocked-$USER_ID </code></pre>
   <ul>
     <li>Expected: <code>AccessDenied</code> — your role cannot create IAM users</li>
-    <li>Read the full error; it names your user ARN and the action</li>
+    <li>Read the full error; it names your role ARN and the action</li>
     <li>This is the safety net — even a misconfigured lab can't change IAM identities</li>
+    <li><code>$USER_ID</code> keeps the user name unique per student so names can't collide in the shared account</li>
   </ul>
 </section>
 

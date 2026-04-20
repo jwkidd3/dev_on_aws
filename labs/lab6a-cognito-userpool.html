@@ -71,7 +71,7 @@
     <li><strong>Configure security requirements:</strong> password policy defaults; MFA = <strong>No MFA</strong> (class-only)</li>
     <li><strong>Configure sign-up experience:</strong> self-registration off; required attributes = <code>email</code></li>
     <li><strong>Configure message delivery:</strong> <strong>Send email with Cognito</strong></li>
-    <li><strong>Integrate your app:</strong> user pool name <code>dev-on-aws-user1</code></li>
+    <li><strong>Integrate your app:</strong> user pool name <code>dev-on-aws-&lt;your-user&gt;</code> (e.g., <code>dev-on-aws-user1</code>). Step 3 queries for this exact name.</li>
   </ol>
 </section>
 
@@ -88,13 +88,20 @@
 
 <section>
   <h2>Step 3 — Save the IDs <span class="time">5 min</span></h2>
-  <pre><code># Cloud9 terminal
-cat &gt;&gt; ~/.dev-on-aws.env &lt;&lt;EOF
-export POOL_ID=us-east-1_XXXXXXXXX
-export CLIENT_ID=abcdefghijklmnopqrstuv
-EOF
-source ~/.dev-on-aws.env</code></pre>
-  <p class="small">Replace the placeholders with the real IDs from the console.</p>
+  <p class="small">Derive both IDs from the API instead of typing them — no copy-paste errors, no stale placeholders.</p>
+  <pre><code>POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 \
+    --query "UserPools[?Name=='dev-on-aws-$USER_ID'].Id | [0]" \
+    --output text)
+CLIENT_ID=$(aws cognito-idp list-user-pool-clients \
+    --user-pool-id $POOL_ID \
+    --query "UserPoolClients[?ClientName=='web'].ClientId | [0]" \
+    --output text)
+
+echo "export POOL_ID=$POOL_ID"     &gt;&gt; ~/.dev-on-aws.env
+echo "export CLIENT_ID=$CLIENT_ID" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env
+echo "POOL_ID=$POOL_ID  CLIENT_ID=$CLIENT_ID"</code></pre>
+  <p class="small">If the pool was created with a different name in the console wizard, swap the <code>Name==</code> filter accordingly.</p>
 </section>
 
 <section>
@@ -145,7 +152,7 @@ echo "export ID_TOKEN=$ID_TOKEN" &gt;&gt; ~/.dev-on-aws.env</code></pre>
 <section>
   <h2>Success Criteria <span class="time">3 min</span></h2>
   <ul>
-    <li>✅ User pool <code>dev-on-aws-user1</code> visible in the Console</li>
+    <li>✅ User pool <code>dev-on-aws-$USER_ID</code> visible in the Console</li>
     <li>✅ Public app client <code>web</code> created; no secret</li>
     <li>✅ User <code>alice@example.com</code> confirmed, permanent password set</li>
     <li>✅ <code>initiate-auth</code> returns an <code>IdToken</code></li>

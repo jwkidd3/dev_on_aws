@@ -65,16 +65,17 @@
 
 <section>
   <h2>Step 1 — Create the Function &amp; Role <span class="time">6 min</span></h2>
+  <p class="small"><strong>Wherever this slide shows <code>user1</code>, substitute your own user id</strong> (<code>user2</code>, <code>user3</code>, …). The Console doesn't expand shell vars, and every lab downstream looks up <code>lab4-$USER_ID</code> and <code>StudentLambdaRole-$USER_ID</code> literally.</p>
   <ol>
     <li>Console → <strong>Lambda</strong> → <strong>Create function</strong></li>
     <li>Choose <strong>Author from scratch</strong></li>
-    <li>Function name: <code>lab4-user1</code></li>
+    <li>Function name: <code>lab4-&lt;your-user&gt;</code> (e.g., <code>lab4-user1</code>)</li>
     <li>Runtime: <strong>Python 3.12</strong></li>
     <li>Architecture: <strong>arm64</strong></li>
     <li>Permissions → expand <strong>Change default execution role</strong> →
         <strong>Create a new role from AWS policy templates</strong>
       <ul>
-        <li>Role name: <code>StudentLambdaRole-user1</code></li>
+        <li>Role name: <code>StudentLambdaRole-&lt;your-user&gt;</code></li>
         <li>Policy templates: leave empty (Lambda adds the basic execution policy for CloudWatch Logs automatically)</li>
       </ul>
     </li>
@@ -113,10 +114,10 @@ def lambda_handler(event, context):
   <h2>Step 4 — Test Event <span class="time">6 min</span></h2>
   <ol>
     <li>Switch to the <strong>Test</strong> tab</li>
-    <li>Event name: <code>hello-user1</code></li>
-    <li>Payload JSON: <code>{"name":"user1"}</code></li>
+    <li>Event name: <code>hello-&lt;your-user&gt;</code></li>
+    <li>Payload JSON: <code>{"name":"&lt;your-user&gt;"}</code> — e.g., <code>{"name":"user1"}</code></li>
     <li>Click <strong>Test</strong></li>
-    <li>Expected response status 200; body contains <code>"Hi, user1!"</code></li>
+    <li>Expected response status 200; body contains <code>"Hi, &lt;your-user&gt;!"</code></li>
   </ol>
 </section>
 
@@ -124,7 +125,7 @@ def lambda_handler(event, context):
   <h2>Step 5 — Read the Logs <span class="time">6 min</span></h2>
   <ol>
     <li><strong>Monitor</strong> tab → <strong>View CloudWatch logs</strong></li>
-    <li>You should see a log group <code>/aws/lambda/lab4-user1</code> with one stream</li>
+    <li>You should see a log group <code>/aws/lambda/lab4-&lt;your-user&gt;</code> with one stream</li>
     <li>Open the stream; note <code>INIT_START</code>, <code>START</code>, <code>END</code>, <code>REPORT</code> lines</li>
     <li>The <code>REPORT</code> line has duration, memory used, and billed ms</li>
   </ol>
@@ -146,7 +147,7 @@ cat out.json
 <section>
   <h2>Success Criteria <span class="time">3 min</span></h2>
   <ul>
-    <li>✅ Function <code>lab4-user1</code> created through the Console wizard</li>
+    <li>✅ Function <code>lab4-$USER_ID</code> created through the Console wizard</li>
     <li>✅ Handler edited inline and deployed</li>
     <li>✅ Env var <code>GREETING=Hi</code> takes effect in the response</li>
     <li>✅ Test event returns 200; CloudWatch log stream visible</li>

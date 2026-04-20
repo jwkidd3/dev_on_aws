@@ -57,7 +57,7 @@
   <h2>Prerequisites <span class="time">3 min</span></h2>
   <ul>
     <li>Labs 5a, 6a complete</li>
-    <li><code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$POOL_ID</code>, <code>$ID_TOKEN</code>, <code>$ACCT</code>, <code>$LAMBDA_ARN</code> all exported</li>
+    <li>Exported: <code>$USER_ID</code>, <code>$ACCT</code>, <code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$LAMBDA_ARN</code>, <code>$URL</code>, <code>$POOL_ID</code>, <code>$ID_TOKEN</code></li>
   </ul>
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 6b</code> creates-or-reuses the API, Lambda, user pool + client, and captures a fresh <code>$ID_TOKEN</code>.</p>
 </section>
@@ -70,9 +70,12 @@
   --type COGNITO_USER_POOLS \
   --identity-source method.request.header.Authorization \
   --provider-arns arn:aws:cognito-idp:us-east-1:$ACCT:userpool/$POOL_ID \
-  --query id -o text)
+  --query id --output text)
 
-echo $AUTH_ID</code></pre>
+echo "export AUTH_ID=$AUTH_ID" &gt;&gt; ~/.dev-on-aws.env
+source ~/.dev-on-aws.env
+echo "AUTH_ID=$AUTH_ID"</code></pre>
+  <p class="small">Persist <code>AUTH_ID</code> so Step 4's <code>add_methods.sh</code> can pick it up from <code>~/.dev-on-aws.env</code> even in a new terminal.</p>
 </section>
 
 <section>

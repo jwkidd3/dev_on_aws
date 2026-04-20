@@ -123,10 +123,13 @@ cp -r dev_on_aws/labs/files ./dev-on-aws
 
 # Verify — raise your hand if any line shows MISS
 cd ~/environment/dev-on-aws
-for f in lab1/smoke_test.py lab3/seed.py lab4/handler.py \
-         lab4/lambda-perms.json lab6/add_methods.sh \
-         lab7/python/handler.py lab7/template.yaml \
-         bootstrap.sh; do
+for f in lab1/smoke_test.py lab2/seed.py lab2/process.py \
+         lab2/make_get_url.py lab2/make_put_url.py \
+         lab3/seed.py lab3/bulk_load.py lab3/query_filter.py \
+         lab3/query_gsi.py lab3/update_conditional.py lab3/scan_demo.py \
+         lab4/handler.py lab4/lambda-perms.json \
+         lab6/add_methods.sh lab7/python/handler.py \
+         lab7/template.yaml bootstrap.sh; do
   [ -f "$f" ] &amp;&amp; echo "OK   $f" || echo "MISS $f"
 done
 chmod +x ~/environment/dev-on-aws/bootstrap.sh</code></pre>

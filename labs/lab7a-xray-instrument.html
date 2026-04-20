@@ -57,7 +57,8 @@
   <h2>Prerequisites <span class="time">3 min</span></h2>
   <ul>
     <li>Labs 4a–4b, 5a, 6a–6c complete</li>
-    <li>Function <code>lab4-$USER_ID</code> deployed, API live, <code>$ID_TOKEN</code> available</li>
+    <li>Function <code>lab4-$USER_ID</code> deployed, API live</li>
+    <li>Exported: <code>$USER_ID</code>, <code>$API_ID</code>, <code>$URL</code>, <code>$ID_TOKEN</code></li>
   </ul>
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 7a</code> creates-or-reuses the full stack through Cognito so you can instrument and fire traffic immediately.</p>
 </section>
@@ -90,26 +91,32 @@ echo "aws-xray-sdk" &gt; requirements.txt</code></pre>
   <h2>Step 3 — Turn on Tracing <span class="time">7 min</span></h2>
   <pre><code>aws lambda update-function-configuration \
     --function-name lab4-$USER_ID \
-    --tracing-config Mode=Active 
+    --tracing-config Mode=Active
+aws lambda wait function-updated --function-name lab4-$USER_ID
 
 aws iam attach-role-policy \
     --role-name StudentLambdaRole-$USER_ID \
-    --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess 
+    --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
 
 aws apigateway update-stage \
     --rest-api-id $API_ID --stage-name dev \
-    --patch-operations op=replace,path=/tracingEnabled,value=true </code></pre>
+    --patch-operations op=replace,path=/tracingEnabled,value=true</code></pre>
+  <p class="small">Always <code>wait function-updated</code> between Lambda updates or the next call hits <code>ResourceConflictException</code>.</p>
 </section>
 
 <section>
   <h2>Step 4 — Redeploy &amp; Fire <span class="time">7 min</span></h2>
   <pre><code>cd ~/environment/dev-on-aws/lab4
-# Zip the handler + every vendored dependency pip just installed
-zip -qr function.zip . -x '*.dist-info/*' -x '__pycache__/*'
+# Zip the handler + every vendored dependency pip just installed.
+# Exclude packaging metadata and any local artefacts (test output, policy JSON).
+zip -qr function.zip . \
+    -x '*.dist-info/*' '__pycache__/*' \
+       'out.json' 'notify.json' 'lambda-perms.json' 'requirements.txt'
 
 aws lambda update-function-code \
     --function-name lab4-$USER_ID \
     --zip-file fileb://function.zip
+aws lambda wait function-updated --function-name lab4-$USER_ID
 
 for i in $(seq 1 20); do
   curl -s -H "Authorization: $ID_TOKEN" -X POST $URL \

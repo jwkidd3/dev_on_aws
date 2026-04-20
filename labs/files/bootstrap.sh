@@ -76,6 +76,9 @@ ensure_bucket() {
 }
 
 #── DynamoDB Items-$USER_ID (Lab 3a) ──────────────────────────────────
+# Schema MUST match what Lab 3a's console flow + lab3/*.py scripts expect:
+#   PK:  pk (S) HASH, sk (S) RANGE
+#   GSI byCategory:  category (S) HASH, price (N) RANGE, Projection=ALL
 ensure_table() {
   say "ensure_table"
   local T="Items-$USER_ID"
@@ -84,15 +87,19 @@ ensure_table() {
   else
     aws dynamodb create-table --table-name "$T" \
       --attribute-definitions \
-          AttributeName=id,AttributeType=S \
+          AttributeName=pk,AttributeType=S \
+          AttributeName=sk,AttributeType=S \
           AttributeName=category,AttributeType=S \
-      --key-schema AttributeName=id,KeyType=HASH \
+          AttributeName=price,AttributeType=N \
+      --key-schema \
+          AttributeName=pk,KeyType=HASH \
+          AttributeName=sk,KeyType=RANGE \
       --billing-mode PAY_PER_REQUEST \
       --global-secondary-indexes \
-        "IndexName=byCategory,KeySchema=[{AttributeName=category,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        "IndexName=byCategory,KeySchema=[{AttributeName=category,KeyType=HASH},{AttributeName=price,KeyType=RANGE}],Projection={ProjectionType=ALL}" \
       >/dev/null
     aws dynamodb wait table-exists --table-name "$T"
-    ok "$T (with byCategory GSI)"
+    ok "$T (pk/sk + byCategory GSI on category+price)"
   fi
 }
 
@@ -209,9 +216,11 @@ ensure_api() {
 }
 
 #── Cognito pool + client + user + fresh ID token (Lab 6a/6b) ─────────
+# Names MUST match Lab 6a's canonical convention — Lab 6a Step 3 queries
+# with Name=='dev-on-aws-$USER_ID' and ClientName=='web'.
 ensure_cognito() {
   say "ensure_cognito"
-  local PNAME="dev-on-aws-pool-$USER_ID"
+  local PNAME="dev-on-aws-$USER_ID"
   local PID
   PID=$(aws cognito-idp list-user-pools --max-results 60 \
         --query "UserPools[?Name=='$PNAME'].Id | [0]" --output text)
@@ -220,10 +229,10 @@ ensure_cognito() {
           --auto-verified-attributes email \
           --policies 'PasswordPolicy={MinimumLength=8,RequireUppercase=false,RequireLowercase=false,RequireNumbers=false,RequireSymbols=false}' \
           --query UserPool.Id --output text)
-    ok "pool $PID"
-  else skip "pool $PID"; fi
+    ok "pool $PNAME ($PID)"
+  else skip "pool $PNAME ($PID)"; fi
 
-  local CNAME="dev-on-aws-client-$USER_ID"
+  local CNAME="web"
   local CID
   CID=$(aws cognito-idp list-user-pool-clients --user-pool-id "$PID" \
         --query "UserPoolClients[?ClientName=='$CNAME'].ClientId | [0]" \
@@ -231,10 +240,10 @@ ensure_cognito() {
   if [ -z "$CID" ] || [ "$CID" = "None" ]; then
     CID=$(aws cognito-idp create-user-pool-client --user-pool-id "$PID" \
           --client-name "$CNAME" \
-          --explicit-auth-flows ALLOW_ADMIN_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+          --explicit-auth-flows ALLOW_ADMIN_USER_PASSWORD_AUTH ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
           --query UserPoolClient.ClientId --output text)
-    ok "client $CID"
-  else skip "client $CID"; fi
+    ok "client $CNAME ($CID)"
+  else skip "client $CNAME ($CID)"; fi
 
   aws cognito-idp admin-create-user --user-pool-id "$PID" \
       --username "student-$USER_ID" \
@@ -284,7 +293,7 @@ ensure_site() {
 
 #── Dispatch ──────────────────────────────────────────────────────────
 case "$LAB" in
-  1b)             ensure_env ;;
+  1b|1c)          ensure_env ;;
   2a|2b)          ensure_env ;;
   3a|3b)          ensure_env ;;
   4a)             ensure_env; ensure_bucket; ensure_table ;;

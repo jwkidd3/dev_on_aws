@@ -22,7 +22,10 @@
   .reveal .small { font-size: 0.7em; color:#555; }
   .reveal section[data-background-color] h2,
   .reveal section[data-background-color] p,
-  .reveal section[data-background-color] li { color:#fff; }</style>
+  .reveal section[data-background-color] li { color:#fff; }
+  .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
+    padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
+    letter-spacing:1px; text-transform:uppercase; }</style>
 </head>
 <body>
 <div class="reveal"><div class="slides">
@@ -113,6 +116,17 @@ for b in boto3.client("s3").list_buckets()["Buckets"]:
     <li>Work persists on EBS between days; URL is shareable for pair-debugging</li>
   </ul>
   <p class="small">Outside class, local VS Code + JetBrains with the AWS Toolkit remain first-class choices for real projects.</p>
+</section>
+
+<section data-background-color="#FF9900">
+  <span class="lab-tag">Hands-On Lab Block · 2 × 30–35 min</span>
+  <h2>🧪 Labs 1a · 1b</h2>
+  <ul>
+    <li><strong>1a — Sign In &amp; Create Your Cloud9 Environment.</strong> Attach <code>LabRole</code>, disable AMTC, clone the course repo.</li>
+    <li><strong>1b — First SDK Call in Cloud9.</strong> <code>smoke_test.py</code> — <code>sts:GetCallerIdentity</code> + <code>s3:ListBuckets</code>.</li>
+  </ul>
+  <p class="small">Run after Module 4 — Lab 1c (IAM authoring) follows them.</p>
+  <p class="small"><code>labs/lab1a-*.html · lab1b-*.html</code></p>
 </section>
 
 <section data-background-color="#146EB4">

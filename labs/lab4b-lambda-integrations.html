@@ -91,20 +91,24 @@ aws iam put-role-policy \
 
 <section>
   <h2>Step 3 — Redeploy with New Env Vars <span class="time">6 min</span></h2>
+  <p class="small">Lab 4a created the function with the default <code>lambda_function.lambda_handler</code> entrypoint. Our zip holds <code>handler.py</code> with <code>def handler(…)</code> — so the handler setting must change to <code>handler.handler</code> or every invoke returns <code>Runtime.ImportModuleError</code>. Also: each <code>update-*</code> puts the function in <em>InProgress</em>; wait for it to settle before firing the next or AWS raises <code>ResourceConflictException</code>.</p>
   <pre><code>cd ~/environment/dev-on-aws/lab4
 zip -r function.zip handler.py
 
 aws lambda update-function-code \
     --function-name lab4-$USER_ID \
-    --zip-file fileb://function.zip 
+    --zip-file fileb://function.zip
+aws lambda wait function-updated --function-name lab4-$USER_ID
 
 aws lambda update-function-configuration \
     --function-name lab4-$USER_ID \
-    --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}" 
+    --handler handler.handler \
+    --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}"
+aws lambda wait function-updated --function-name lab4-$USER_ID
 
 aws lambda invoke --function-name lab4-$USER_ID \
-    --payload '{"user":"user1"}' \
-    --cli-binary-format raw-in-base64-out out.json  &amp;&amp; cat out.json</code></pre>
+    --payload "{\"user\":\"$USER_ID\"}" \
+    --cli-binary-format raw-in-base64-out out.json &amp;&amp; cat out.json</code></pre>
 </section>
 
 <section>
@@ -136,14 +140,18 @@ aws logs tail /aws/lambda/lab4-$USER_ID --follow</code></pre>
 
 <section>
   <h2>Step 6 — Version &amp; Alias <span class="time">6 min</span></h2>
-  <pre><code>aws lambda publish-version \
-    --function-name lab4-$USER_ID \
-    --description "lab4b-s3-trigger" 
+  <pre><code># Capture the version number publish-version returns
+VER=$(aws lambda publish-version \
+        --function-name lab4-$USER_ID \
+        --description "lab4b-s3-trigger" \
+        --query Version --output text)
+echo "published version $VER"
 
 aws lambda create-alias \
     --function-name lab4-$USER_ID \
     --name prod \
-    --function-version 2 </code></pre>
+    --function-version $VER</code></pre>
+  <p class="small">Version numbering is sequential per function; the first <code>publish-version</code> returns <code>1</code>, the second <code>2</code>, and so on. Capturing it from the command output avoids guessing.</p>
 </section>
 
 <section>

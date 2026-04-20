@@ -51,7 +51,7 @@
     <li>Use the built-in <strong>Test</strong> console to call the method</li>
     <li>Deploy to a <code>dev</code> stage and hit it from Cloud9</li>
   </ul>
-  <p class="small">Lab 5b layers on validation, CORS, and access logging (mostly CLI).</p>
+  <p class="small">Lab 6b adds a Cognito JWT authorizer on top of this same API; validation, CORS, and access logging come with the Swagger import there.</p>
 </section>
 
 <section>
@@ -68,7 +68,7 @@
   <ol>
     <li>Console → <strong>API Gateway</strong> → <strong>Create API</strong></li>
     <li>Pick <strong>REST API</strong> → <strong>Build</strong></li>
-    <li>New API, Name: <code>dev-on-aws-user1</code></li>
+    <li>New API, Name: <code>dev-on-aws-&lt;your-user&gt;</code> (e.g., <code>dev-on-aws-user1</code>). <strong>Use your own user id</strong> — Lab 5a Step 6 queries for this exact name later.</li>
     <li>Endpoint type: <strong>Regional</strong></li>
     <li><strong>Create API</strong></li>
   </ol>
@@ -89,7 +89,7 @@
   <ol>
     <li>Integration type: <strong>Lambda function</strong></li>
     <li>Toggle <strong>Lambda proxy integration</strong> → ON</li>
-    <li>Lambda function: <code>lab4-user1</code></li>
+    <li>Lambda function: <code>lab4-&lt;your-user&gt;</code> (the one you created in Lab 4a)</li>
     <li><strong>Create method</strong> — accept the "add invoke permission" prompt</li>
     <li>You should see the method diagram: Client → Method Request → Lambda → Method Response</li>
   </ol>
@@ -153,8 +153,8 @@ curl -i -X POST $URL \
 <section>
   <h2>Success Criteria <span class="time">3 min</span></h2>
   <ul>
-    <li>✅ REST API <code>dev-on-aws-user1</code> created via Console wizard</li>
-    <li>✅ POST /items wired to <code>lab4-user1</code> with proxy integration</li>
+    <li>✅ REST API <code>dev-on-aws-$USER_ID</code> created via Console wizard</li>
+    <li>✅ POST /items wired to <code>lab4-$USER_ID</code> with proxy integration</li>
     <li>✅ Console <strong>Test</strong> returns 200 with a full request trace</li>
     <li>✅ <code>dev</code> stage deployed; invoke URL works from Cloud9 <code>curl</code></li>
     <li>✅ <code>$API_ID</code>, <code>$ITEMS_ID</code>, <code>$ACCT</code>, <code>$LAMBDA_ARN</code> exported</li>

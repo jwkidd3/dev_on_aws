@@ -66,75 +66,62 @@
 
 <section>
   <h2>Step 1 — Seed the Pipeline <span class="time">8 min</span></h2>
-  <pre><code>import boto3, os
-s3 = boto3.client("s3")
-BUCKET = os.environ["BUCKET"]
-
-for i in range(5):
-    s3.put_object(
-        Bucket=BUCKET,
-        Key=f"inbox/item-{i:02d}.txt",
-        Body=f"message {i}".encode(),
-        ContentType="text/plain",
-        Metadata={"owner": "user1"}
-    )</code></pre>
+  <p class="small">Every Python snippet in this lab is already on disk under <code>~/environment/dev-on-aws/lab2/</code> (cloned in Lab 1a). <strong>Do not paste Python into the terminal</strong> — open each file in the Cloud9 editor, read it, then run it.</p>
+  <p class="small">Open <code>lab2/seed.py</code> in the editor. It PUTs 5 objects under <code>inbox/</code>, each stamped with your <code>$USER_ID</code> as owner metadata. Then run:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab2
+python3 seed.py
+# seeded 5 objects under s3://student-…-uploads-…/inbox/</code></pre>
 </section>
 
 <section>
   <h2>Step 2 — Process with a Paginator <span class="time">7 min</span></h2>
-  <pre><code>paginator = s3.get_paginator("list_objects_v2")
-count = 0
-for page in paginator.paginate(Bucket=BUCKET, Prefix="inbox/"):
-    for obj in page.get("Contents", []):
-        resp = s3.get_object(Bucket=BUCKET, Key=obj["Key"])
-        body = resp["Body"].read().decode().upper()
-        out_key = obj["Key"].replace("inbox/", "outbox/")
-        s3.put_object(
-            Bucket=BUCKET, Key=out_key, Body=body.encode(),
-            ContentType="text/plain",
-            Metadata={**resp["Metadata"], "stage": "processed"}
-        )
-        count += 1
-print(f"processed {count} objects")</code></pre>
+  <p class="small">Open <code>lab2/process.py</code>. It paginates <code>inbox/</code> (no manual <code>ContinuationToken</code>), upper-cases each body, preserves metadata, and writes to <code>outbox/</code>.</p>
+  <pre><code>python3 process.py
+# processed 5 objects into s3://student-…-uploads-…/outbox/</code></pre>
 </section>
 
 <section>
   <h2>Step 3 — Presigned GET <span class="time">7 min</span></h2>
-  <pre><code>url = s3.generate_presigned_url(
-    "get_object",
-    Params={"Bucket": BUCKET, "Key": "outbox/item-00.txt"},
-    ExpiresIn=60
-)
-print(url)</code></pre>
+  <p class="small">Open <code>lab2/make_get_url.py</code>. It prints one presigned GET URL on stdout; an optional TTL argument (default 300 s) lets us demo expiry. We capture the URL into an env var so <code>curl</code> can use it directly.</p>
+  <pre><code># Capture a 300-second URL into $GET_URL
+export GET_URL=$(python3 make_get_url.py 300)
+curl -s "$GET_URL"; echo
+# MESSAGE 0
+
+# Capture a 5-second URL, wait past the window, retry
+export GET_URL_SHORT=$(python3 make_get_url.py 5)
+sleep 7
+curl -s "$GET_URL_SHORT"; echo
+# &lt;Error&gt;&lt;Code&gt;AccessDenied&lt;/Code&gt;…</code></pre>
   <ul>
-    <li>Open the URL in a browser — you should see <code>MESSAGE 0</code></li>
-    <li>Wait 61 seconds, reload — expect <code>AccessDenied</code> XML</li>
-    <li>Treat presigned URLs like bearer tokens while valid</li>
+    <li>First fetch: body is <code>MESSAGE 0</code> — the URL itself carried the signed auth</li>
+    <li>Second fetch: <code>AccessDenied</code> — expiry is enforced server-side</li>
+    <li>Treat presigned URLs like bearer tokens while valid — anyone with the link can read</li>
+    <li><code>$(…)</code> trims trailing whitespace, so the URL lands in the env var clean</li>
   </ul>
 </section>
 
 <section>
   <h2>Step 4 — Presigned PUT <span class="time">7 min</span></h2>
-  <pre><code>put_url = s3.generate_presigned_url(
-    "put_object",
-    Params={"Bucket": BUCKET, "Key": "uploads/user1/note.txt",
-            "ContentType": "text/plain"},
-    ExpiresIn=600
-)
-print(put_url)</code></pre>
-  <pre><code># From your terminal — no AWS creds involved
+  <p class="small">Open <code>lab2/make_put_url.py</code>. It prints a presigned PUT URL on stdout, scoped to <code>uploads/$USER_ID/note.txt</code> with <code>Content-Type: text/plain</code>. Capture it the same way.</p>
+  <pre><code>export PUT_URL=$(python3 make_put_url.py)
+echo "$PUT_URL"   # sanity check — should be a long https:// URL
+
+# Create the payload and PUT it — no AWS creds on the caller
 echo "from curl" &gt; /tmp/note.txt
-curl -X PUT -H "Content-Type: text/plain" \
-     --upload-file /tmp/note.txt "$put_url"</code></pre>
-  <p class="small">Browsers use the same pattern — S3 receives the bytes directly; your API never sees them.</p>
+curl -s -X PUT -H "Content-Type: text/plain" \
+     --upload-file /tmp/note.txt \
+     "$PUT_URL"</code></pre>
+  <p class="small">S3 returns an empty body on success. If the <code>Content-Type</code> header differs from what you signed for, S3 returns <code>SignatureDoesNotMatch</code> — the header is part of the signed payload.</p>
 </section>
 
 <section>
   <h2>Step 5 — Verify <span class="time">7 min</span></h2>
   <pre><code>aws s3 ls s3://$BUCKET/ --recursive
 aws s3api get-object --bucket $BUCKET \
-    --key uploads/user1/note.txt /tmp/round-trip.txt 
-cat /tmp/round-trip.txt</code></pre>
+    --key uploads/$USER_ID/note.txt /tmp/round-trip.txt
+cat /tmp/round-trip.txt
+# from curl</code></pre>
 </section>
 
 <section>

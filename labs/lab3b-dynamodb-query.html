@@ -66,7 +66,7 @@
   <h2>Step 1 — Review seed.py <span class="time">6 min</span></h2>
   <p class="small">Open <code>~/environment/dev-on-aws/lab3/seed.py</code> in the Cloud9 editor. It builds 30 items in memory with seeded randomness:</p>
   <ul>
-    <li>Each row gets the same <code>pk = "USER#user1"</code> (change to your user if not <code>user1</code>)</li>
+    <li>Each row gets the same <code>pk = f"USER#{os.environ['USER_ID']}"</code> — no hand-editing needed</li>
     <li><code>sk</code> ranges <code>ITEM#003</code>..<code>ITEM#032</code> to avoid colliding with Lab 3a's <code>ITEM#001</code>, <code>ITEM#002</code></li>
     <li><code>price</code> is a <code>Decimal</code> — required by DynamoDB (no <code>float</code>)</li>
     <li><code>random.seed(42)</code> means everyone gets identical rows</li>
@@ -84,33 +84,16 @@ python3 bulk_load.py
 
 <section>
   <h2>Step 3 — Query + Filter + Paginate <span class="time">6 min</span></h2>
-  <pre><code>from boto3.dynamodb.conditions import Key, Attr
-
-kwargs = {
-  "KeyConditionExpression": Key("pk").eq("USER#$USER_ID")
-                         &amp; Key("sk").begins_with("ITEM#"),
-  "FilterExpression": Attr("price").lt(Decimal("20")),
-  "Limit": 10
-}
-total = 0
-while True:
-    r = table.query(**kwargs)
-    total += len(r["Items"])
-    if "LastEvaluatedKey" not in r:
-        break
-    kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
-print("items under $20:", total)</code></pre>
+  <p class="small">Open <code>lab3/query_filter.py</code> in the editor. It runs a <code>KeyConditionExpression</code> narrowed to your <code>USER#$USER_ID</code> rows, layers a <code>FilterExpression</code> for <code>price &lt; 20</code>, and walks <code>LastEvaluatedKey</code> until the table ends. Then run:</p>
+  <pre><code>cd ~/environment/dev-on-aws/lab3
+python3 query_filter.py
+# items under $20: &lt;count&gt;</code></pre>
 </section>
 
 <section>
   <h2>Step 4 — Query the GSI <span class="time">6 min</span></h2>
-  <pre><code>resp = table.query(
-  IndexName="byCategory",
-  KeyConditionExpression=Key("category").eq("widgets")
-                     &amp; Key("price").lt(Decimal("15"))
-)
-for x in resp["Items"]:
-    print(x["sk"], x["title"], x["price"])</code></pre>
+  <p class="small">Open <code>lab3/query_gsi.py</code>. It targets the <code>byCategory</code> GSI and mixes a HASH (<code>category</code>) with a RANGE (<code>price</code>) condition.</p>
+  <pre><code>python3 query_gsi.py</code></pre>
   <ul>
     <li>GSI query doesn't require the table's primary key</li>
     <li>GSI reads are eventually consistent</li>
@@ -120,26 +103,18 @@ for x in resp["Items"]:
 
 <section>
   <h2>Step 5 — Conditional Update <span class="time">6 min</span></h2>
-  <pre><code>from decimal import Decimal
-
-table.update_item(
-  Key={"pk":"USER#$USER_ID","sk":"ITEM#003"},
-  UpdateExpression="SET price = :new ADD #v :one",
-  ConditionExpression="price &lt;&gt; :new",
-  ExpressionAttributeNames={"#v":"views"},
-  ExpressionAttributeValues={":new":Decimal("9.99"),":one":1},
-  ReturnValues="ALL_NEW"
-)</code></pre>
-  <p class="small">Re-run the same call — second time raises <code>ConditionalCheckFailedException</code>. This is how you prevent lost updates.</p>
+  <p class="small">Open <code>lab3/update_conditional.py</code>. It updates ITEM#003's <code>price</code> and <code>ADDs</code> 1 to <code>views</code>, guarded by <code>price &lt;&gt; :new</code>.</p>
+  <pre><code>python3 update_conditional.py    # succeeds — price is now 9.99
+python3 update_conditional.py    # ConditionalCheckFailedException — price already 9.99</code></pre>
+  <p class="small">This is how you prevent lost updates: the database enforces the precondition in the same atomic write.</p>
 </section>
 
 <section>
   <h2>Step 6 — Scan (Just Once, to Feel It) <span class="time">6 min</span></h2>
-  <pre><code>import time
-t0 = time.time()
-resp = table.scan(FilterExpression=Attr("category").eq("widgets"))
-print(f"{len(resp['Items'])} items in {time.time()-t0:.2f}s")</code></pre>
-  <p class="small">Scan reads the whole table, then filters. This is why you design for Query.</p>
+  <p class="small">Open <code>lab3/scan_demo.py</code>. It scans the full table, then filters for <code>category == widgets</code> client-side.</p>
+  <pre><code>python3 scan_demo.py
+# &lt;n&gt; items in &lt;time&gt;s</code></pre>
+  <p class="small">Scan reads the whole table, then filters. On 30 rows it's instant; on 30M it's painful. Design for Query.</p>
 </section>
 
 <section>
