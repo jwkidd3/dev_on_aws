@@ -261,7 +261,6 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
       BS_BUCKET="$BS_EXPECTED_BUCKET"
       pass "verify: uploads bucket ($BS_BUCKET)"
     else
-      # Fallback: maybe the script discovered an older bucket from a prior run
       BS_BUCKET=$(aws s3api list-buckets \
           --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" \
           --output text 2>/dev/null)
@@ -269,7 +268,12 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
         pass "verify: uploads bucket ($BS_BUCKET, via list)"
       else
         BS_BUCKET=""
-        fail "verify uploads bucket" "$BS_EXPECTED_BUCKET not found via head-bucket or list"
+        fail "verify uploads bucket" "$BS_EXPECTED_BUCKET not found"
+        # Diagnostic: dump the 4a log (first iteration that should have called
+        # ensure_bucket) so we can see whether it ran, succeeded, or was skipped
+        echo "     ┌── bs-4a.log (last 40 lines) ─────────────────"
+        tail -n 40 "$TMP/bs-4a.log" 2>/dev/null | sed 's/^/     │ /'
+        echo "     └──────────────────────────────────────────────"
       fi
     fi
 

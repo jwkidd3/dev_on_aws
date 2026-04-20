@@ -63,9 +63,16 @@ ensure_bucket() {
     if [ -z "$B" ] || [ "$B" = "None" ]; then
       # 3. create a fresh one
       B="student-${USER_ID}-uploads-$(date +%Y%m%d)"
-      aws s3 mb "s3://$B" >/dev/null
+      say "creating s3://$B"
+      local MB_ERR
+      MB_ERR=$(aws s3 mb "s3://$B" 2>&1 >/dev/null) \
+        || die "aws s3 mb s3://$B failed: ${MB_ERR:-unknown error}"
       aws s3api put-bucket-versioning --bucket "$B" \
-        --versioning-configuration Status=Enabled
+        --versioning-configuration Status=Enabled \
+        || die "put-bucket-versioning on $B failed"
+      # Sanity-check the bucket is actually reachable before we claim success
+      aws s3api head-bucket --bucket "$B" 2>/dev/null \
+        || die "head-bucket check on freshly created $B failed"
       ok "s3://$B (created)"
     else
       skip "s3://$B (discovered)"
