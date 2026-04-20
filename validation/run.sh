@@ -254,12 +254,24 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
     done
 
     # Verify each ensure_* function produced the expected AWS resource.
-    BS_BUCKET=$(aws s3api list-buckets \
-        --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" \
-        --output text 2>/dev/null)
-    [ -n "$BS_BUCKET" ] && [ "$BS_BUCKET" != "None" ] \
-      && pass "verify: uploads bucket ($BS_BUCKET)" \
-      || fail "verify uploads bucket" "not found"
+    # Use head-bucket against the deterministic name first — list-buckets is
+    # eventually-consistent and can lag a freshly created bucket by minutes.
+    BS_EXPECTED_BUCKET="student-${BS_USER_ID}-uploads-$(date +%Y%m%d)"
+    if aws s3api head-bucket --bucket "$BS_EXPECTED_BUCKET" >/dev/null 2>&1; then
+      BS_BUCKET="$BS_EXPECTED_BUCKET"
+      pass "verify: uploads bucket ($BS_BUCKET)"
+    else
+      # Fallback: maybe the script discovered an older bucket from a prior run
+      BS_BUCKET=$(aws s3api list-buckets \
+          --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-uploads')] | [0].Name" \
+          --output text 2>/dev/null)
+      if [ -n "$BS_BUCKET" ] && [ "$BS_BUCKET" != "None" ]; then
+        pass "verify: uploads bucket ($BS_BUCKET, via list)"
+      else
+        BS_BUCKET=""
+        fail "verify uploads bucket" "$BS_EXPECTED_BUCKET not found via head-bucket or list"
+      fi
+    fi
 
     aws dynamodb describe-table --table-name "$BS_TABLE" >/dev/null 2>&1 \
       && pass "verify: $BS_TABLE" \
@@ -279,12 +291,14 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
       && pass "verify: api dev-on-aws-${BS_USER_ID} ($BS_API)" \
       || fail "verify api" "not found"
 
+    # Pool name matches bootstrap.sh ensure_cognito's canonical name
+    # (same as Lab 6a's console wizard)
     BS_POOL=$(aws cognito-idp list-user-pools --max-results 60 \
-        --query "UserPools[?Name=='dev-on-aws-pool-${BS_USER_ID}'].Id | [0]" \
+        --query "UserPools[?Name=='dev-on-aws-${BS_USER_ID}'].Id | [0]" \
         --output text 2>/dev/null)
     [ -n "$BS_POOL" ] && [ "$BS_POOL" != "None" ] \
-      && pass "verify: pool dev-on-aws-pool-${BS_USER_ID} ($BS_POOL)" \
-      || fail "verify cognito pool" "not found"
+      && pass "verify: pool dev-on-aws-${BS_USER_ID} ($BS_POOL)" \
+      || { BS_POOL=""; fail "verify cognito pool" "dev-on-aws-${BS_USER_ID} not found"; }
 
     BS_SITE=$(aws s3api list-buckets \
         --query "Buckets[?starts_with(Name, 'student-${BS_USER_ID}-site')] | [0].Name" \
