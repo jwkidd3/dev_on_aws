@@ -57,10 +57,27 @@
 <section>
   <h2>Prerequisites <span class="time">2 min</span></h2>
   <ul>
-    <li>Lab 1a complete (Cloud9 + LabRole + repo cloned)</li>
+    <li>Day 1 labs complete (Cloud9 + LabRole + repo cloned + env file set up)</li>
     <li>AWS Console tab open</li>
   </ul>
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 3a</code> exports <code>$USER_ID</code>/<code>$ACCT</code>.</p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>☀️ Resume from Day 1 <span class="time">3 min</span></h2>
+  <p class="small">Run this before anything else on Day 2. It confirms Cloud9 came back up clean and your session variables are still in place. If any check fails, fix it before continuing.</p>
+  <pre><code># 1. LabRole is still attached, AMTC still off
+aws sts get-caller-identity --query Arn --output text
+#   → arn:aws:sts::ACCT:assumed-role/LabRole/i-…
+
+# 2. Session variables auto-sourced from ~/.dev-on-aws.env
+echo "USER_ID=$USER_ID  ACCT=$ACCT  BUCKET=$BUCKET"
+#   → all three non-empty
+
+# 3. Repo + files still on disk
+ls ~/environment/dev-on-aws/lab3/
+#   → bulk_load.py  query_filter.py  query_gsi.py  scan_demo.py  seed.py  update_conditional.py</code></pre>
+  <p class="small">If check 1 shows <code>user/user1</code> or an AMTC session, redo Lab 1a Step 4. If check 2 shows blanks, <code>source ~/.dev-on-aws.env</code>. If check 3 is missing, re-clone per Lab 1a Step 6.</p>
 </section>
 
 <section>
