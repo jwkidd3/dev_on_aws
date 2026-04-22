@@ -58,6 +58,9 @@
   <ul>
     <li>Lab 3a complete — table <code>Items-$USER_ID</code> active, 2 items present</li>
     <li>Cloud9 terminal in <code>~/environment/dev-on-aws/lab3</code></li>
+    <li>Set the default region in your shell — the Python scripts do <strong>not</strong> pass <code>region_name</code>, so boto3 reads it from the environment:
+      <pre><code>export AWS_DEFAULT_REGION=us-east-1</code></pre>
+      Add it to <code>~/.bashrc</code> if you want it to persist across terminal sessions.</li>
   </ul>
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 3b</code> exports <code>$USER_ID</code>. You can create the table yourself via <code>seed.py</code> or by running the Step 1 console flow.</p>
 </section>

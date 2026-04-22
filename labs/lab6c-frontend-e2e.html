@@ -77,12 +77,14 @@ source ~/.dev-on-aws.env</code></pre>
 </section>
 
 <section>
-  <h2>Step 2 — Public-Read + Deny-HTTP Policy <span class="time">6 min</span></h2>
-  <p class="small">Open <code>~/environment/dev-on-aws/lab6/site-policy.json</code> in the editor. Find/replace the three literal <code>BUCKET</code> tokens with your <code>$SITE</code> value (e.g., <code>student-user1-site-20260417</code>). Save.</p>
-  <p class="small">Terminal: apply it.</p>
-  <pre><code>aws s3api put-bucket-policy --bucket $SITE \
-    --policy file://$HOME/environment/dev-on-aws/lab6/site-policy.json</code></pre>
-  <p class="small"><code>file://</code> URLs don't expand <code>~</code> — use <code>$HOME</code> (the shell expands that before the CLI sees it).</p>
+  <h2>Step 2 — Public-Read Policy <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab6/site-policy.json</code> in the editor and read it — a single <code>Allow s3:GetObject</code> statement on this bucket. The literal <code>BUCKET</code> token is a placeholder; render a copy with your real bucket name and apply:</p>
+  <pre><code>sed "s|BUCKET|$SITE|g" \
+    ~/environment/dev-on-aws/lab6/site-policy.json &gt; /tmp/site-policy.json
+
+aws s3api put-bucket-policy --bucket $SITE \
+    --policy file:///tmp/site-policy.json</code></pre>
+  <p class="small"><strong>Why no HTTPS-only enforcement?</strong> The S3 website endpoint (<code>s3-website-us-east-1.amazonaws.com</code>) only serves HTTP. A <code>DenyInsecureTransport</code> clause would 403 every request. To keep HTTPS-only enforcement, front the bucket with CloudFront + OAC — out of scope here; see the Discussion slide.</p>
 </section>
 
 <section>
