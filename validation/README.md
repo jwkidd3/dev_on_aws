@@ -20,7 +20,7 @@ prefix so it never collides with student work. Coverage:
 | 4a/4b | IAM role + trust doc, basic execution policy attach, inline policy for DDB + S3, `create-function` (Python 3.12 / arm64), `invoke`, tracing on, X-Ray daemon policy, `publish-version`, `create-alias` |
 | 5a  | REST API, `/items` resource, POST method, Lambda proxy integration, `add-permission`, stage deployment |
 | 6a  | Cognito user pool + SPA app client, admin-create-user, permanent password, `initiate-auth` returns JWT |
-| 6b  | Cognito authorizer on the Lab 5a API |
+| 6b  | Cognito authorizer on the Lab 5a API; Swagger overwrite import of the real `labs/files/lab6/swagger.json` — verifies `/items/{id}` exists, OPTIONS (CORS mock) present, POST is Cognito-protected, request validator created, wildcard `add-permission`, stage redeploy |
 | 7b  | `sam build`, `sam deploy` using the real `labs/files/lab7/template.yaml` + `handler.py` |
 
 What it does **not** test (requires a browser):
@@ -99,12 +99,14 @@ everything, use the sweeper:
 ./cleanup-orphans.sh --delete   # actually deletes
 ```
 
-It finds every resource whose name starts with `labval-` across:
-CloudFormation stacks (`sam-labval-*`), Cognito user pools, API Gateway REST
-APIs, Lambda functions (`lab4-labval-*`), IAM roles
-(`StudentLambdaRole-labval-*`), DynamoDB tables (`Items-labval-*`), S3 buckets,
-and CloudWatch log groups (`/aws/lambda/lab4-labval-*`,
-`/aws/apigateway/labval-*`). Same versioned-bucket handling as `run.sh`.
+It finds every resource carrying the `labval` marker — plus the bootstrap
+stage's synthetic `bsval*` names — across: CloudFormation stacks
+(`sam-labval-*`), Cognito user pools, API Gateway REST APIs (matched with
+`contains()` because the Lab 6b Swagger import renames the API to
+`dev-on-aws-<prefix>`), Lambda functions (`lab4-{labval-,bsval}*`), IAM roles
+(`StudentLambdaRole-{labval-,bsval}*`), DynamoDB tables
+(`Items-{labval-,bsval}*`), S3 buckets (`labval-*`, `student-bsval*`), and
+CloudWatch log groups. Same versioned-bucket handling as `run.sh`.
 
 ## Cost
 

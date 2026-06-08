@@ -89,6 +89,32 @@
 </section>
 
 <section>
+  <h2>A State Machine, Worked</h2>
+  <pre><code>{
+  "StartAt": "ValidateOrder",
+  "States": {
+    "ValidateOrder": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:…:function:validate",
+      "Retry": [{ "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 2, "MaxAttempts": 3, "BackoffRate": 2.0 }],
+      "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "OrderFailed" }],
+      "Next": "InStock?"
+    },
+    "InStock?": {
+      "Type": "Choice",
+      "Choices": [{ "Variable": "$.stock", "NumericGreaterThan": 0,
+                    "Next": "ChargeCard" }],
+      "Default": "OrderFailed"
+    },
+    "ChargeCard":  { "Type": "Task", "Resource": "arn:…:charge", "End": true },
+    "OrderFailed": { "Type": "Fail", "Error": "OrderError" }
+  }
+}</code></pre>
+  <p class="small"><code>ValidateOrder</code> retries 3× with exponential backoff (2 s → 4 s → 8 s), then <code>Catch</code> routes to <code>OrderFailed</code> — no retry code in any Lambda. <code>Choice</code> branches on the validator's own output (<code>$.stock</code>). The console renders this JSON as a flowchart and replays any execution state-by-state.</p>
+</section>
+
+<section>
   <h2>Idempotency Is Mandatory</h2>
   <ul>
     <li>Async + event-driven systems will redeliver</li>

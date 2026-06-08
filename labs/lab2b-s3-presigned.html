@@ -44,13 +44,14 @@
 </section>
 
 <section>
-  <h2>Objectives <span class="time">3 min</span></h2>
+  <h2>Objectives <span class="time">2 min</span></h2>
   <ul>
     <li>Do from <strong>code</strong> what Lab 2a did in the Console — PUT, GET, metadata</li>
     <li>Build a round-trip pipeline: download → transform → upload back</li>
     <li>Generate a presigned GET URL; verify expiry behavior</li>
     <li>Generate a presigned PUT URL; upload via <code>curl</code> only</li>
     <li>Paginate through a prefix</li>
+    <li>Block on <strong>waiters</strong> and read service <strong>exception codes</strong></li>
   </ul>
 </section>
 
@@ -65,7 +66,7 @@
 </section>
 
 <section>
-  <h2>Step 1 — Seed the Pipeline <span class="time">8 min</span></h2>
+  <h2>Step 1 — Seed the Pipeline <span class="time">6 min</span></h2>
   <p class="small">Every Python snippet in this lab is already on disk under <code>~/environment/dev-on-aws/lab2/</code> (cloned in Lab 1a). <strong>Do not paste Python into the terminal</strong> — open each file in the Cloud9 editor, read it, then run it.</p>
   <p class="small">Open <code>lab2/seed.py</code> in the editor. It PUTs 5 objects under <code>inbox/</code>, each stamped with your <code>$USER_ID</code> as owner metadata. Then run:</p>
   <pre><code>cd ~/environment/dev-on-aws/lab2
@@ -81,7 +82,7 @@ python3 seed.py
 </section>
 
 <section>
-  <h2>Step 3 — Presigned GET <span class="time">7 min</span></h2>
+  <h2>Step 3 — Presigned GET <span class="time">6 min</span></h2>
   <p class="small">Open <code>lab2/make_get_url.py</code>. It prints one presigned GET URL on stdout; an optional TTL argument (default 300 s) lets us demo expiry. We capture the URL into an env var so <code>curl</code> can use it directly.</p>
   <pre><code># Capture a 300-second URL into $GET_URL
 export GET_URL=$(python3 make_get_url.py 300)
@@ -102,7 +103,7 @@ curl -s "$GET_URL_SHORT"; echo
 </section>
 
 <section>
-  <h2>Step 4 — Presigned PUT <span class="time">7 min</span></h2>
+  <h2>Step 4 — Presigned PUT <span class="time">6 min</span></h2>
   <p class="small">Open <code>lab2/make_put_url.py</code>. It prints a presigned PUT URL on stdout, scoped to <code>uploads/$USER_ID/note.txt</code> with <code>Content-Type: text/plain</code>. Capture it the same way.</p>
   <pre><code>export PUT_URL=$(python3 make_put_url.py)
 echo "$PUT_URL"   # sanity check — should be a long https:// URL
@@ -116,12 +117,26 @@ curl -s -X PUT -H "Content-Type: text/plain" \
 </section>
 
 <section>
-  <h2>Step 5 — Verify <span class="time">7 min</span></h2>
+  <h2>Step 5 — Verify <span class="time">5 min</span></h2>
   <pre><code>aws s3 ls s3://$BUCKET/ --recursive
 aws s3api get-object --bucket $BUCKET \
     --key uploads/$USER_ID/note.txt /tmp/round-trip.txt
 cat /tmp/round-trip.txt
 # from curl</code></pre>
+</section>
+
+<section>
+  <h2>Step 6 — Waiters &amp; Exception Codes <span class="time">7 min</span></h2>
+  <p class="small">Open <code>lab2/waiter_demo.py</code>. It creates a scratch bucket and uses <code>get_waiter("bucket_exists")</code> to block until S3 confirms it — no sleep loops. Then it triggers two real failures and prints their <strong>service exception codes</strong>, and finally deletes the bucket with a <code>bucket_not_exists</code> waiter.</p>
+  <pre><code>python3 waiter_demo.py
+# bucket_exists waiter returned — s3://student-…-waiterdemo is ready
+# head_object on missing key   → 404
+# get_object on missing bucket → NoSuchBucket
+# bucket_not_exists waiter returned — cleaned up</code></pre>
+  <ul class="small">
+    <li>Every waiter is just a polling loop the SDK ships for you — <code>WaiterConfig</code> tunes delay and attempts</li>
+    <li><code>e.response["Error"]["Code"]</code> is the field your retry/branch logic should switch on — not the message text</li>
+  </ul>
 </section>
 
 <section>
@@ -131,6 +146,7 @@ cat /tmp/round-trip.txt
     <li>✅ Presigned GET works inside the window, fails after expiry</li>
     <li>✅ Presigned PUT accepts an upload from <code>curl</code> with no AWS creds</li>
     <li>✅ Paginator iterated all objects without manual token management</li>
+    <li>✅ Waiters confirmed bucket create/delete; exception codes <code>404</code> and <code>NoSuchBucket</code> observed</li>
   </ul>
 </section>
 

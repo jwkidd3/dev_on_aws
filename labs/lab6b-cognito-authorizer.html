@@ -44,7 +44,7 @@
 </section>
 
 <section>
-  <h2>Objectives <span class="time">3 min</span></h2>
+  <h2>Objectives <span class="time">2 min</span></h2>
   <ul>
     <li>Attach a Cognito user pool authorizer to the API from Lab 5</li>
     <li>Verify that no-token and valid-token calls behave correctly</li>
@@ -63,7 +63,7 @@
 </section>
 
 <section>
-  <h2>Step 1 — Create the Authorizer <span class="time">8 min</span></h2>
+  <h2>Step 1 — Create the Authorizer <span class="time">6 min</span></h2>
   <pre><code>AUTH_ID=$(aws apigateway create-authorizer \
   --rest-api-id $API_ID \
   --name cognito-$USER_ID \
@@ -75,11 +75,11 @@
 echo "export AUTH_ID=$AUTH_ID" &gt;&gt; ~/.dev-on-aws.env
 source ~/.dev-on-aws.env
 echo "AUTH_ID=$AUTH_ID"</code></pre>
-  <p class="small">Persist <code>AUTH_ID</code> so Step 4's <code>add_methods.sh</code> can pick it up from <code>~/.dev-on-aws.env</code> even in a new terminal.</p>
+  <p class="small">You're wiring the authorizer by hand first so you can see each moving part. Steps 4–5 then replace all of this hand-built wiring with a single Swagger import — the API as code.</p>
 </section>
 
 <section>
-  <h2>Step 2 — Attach to POST <span class="time">7 min</span></h2>
+  <h2>Step 2 — Attach to POST <span class="time">5 min</span></h2>
   <pre><code>aws apigateway update-method \
   --rest-api-id $API_ID --resource-id $ITEMS_ID \
   --http-method POST \
@@ -92,7 +92,7 @@ aws apigateway create-deployment \
 </section>
 
 <section>
-  <h2>Step 3 — Verify Auth <span class="time">7 min</span></h2>
+  <h2>Step 3 — Verify Auth <span class="time">5 min</span></h2>
   <pre><code># No token → 401
 curl -i -X POST $URL \
      -H "Content-Type: application/json" \
@@ -110,34 +110,65 @@ curl -i -X POST $URL -H "Authorization: not.a.token" \
 </section>
 
 <section>
-  <h2>Step 4 — Add GET &amp; DELETE via Script <span class="time">7 min</span></h2>
-  <p class="small">Open <code>~/environment/dev-on-aws/lab6/add_methods.sh</code> in the editor to read what it does: adds GET on <code>/items</code>, creates the <code>/items/{id}</code> child resource, adds GET + DELETE there, deploys the stage. All protected by <code>$AUTH_ID</code> (from Step 1).</p>
-  <p class="small">Terminal:</p>
-  <pre><code>cd ~/environment/dev-on-aws/lab6
-chmod +x add_methods.sh
-./add_methods.sh
-# Deployed.</code></pre>
-  <p class="small">Running a saved script (not pasting 25 lines into the terminal) is the reliable way to execute multi-line bash in Cloud9.</p>
+  <h2>Step 4 — Read the Swagger Definition <span class="time">6 min</span></h2>
+  <p class="small">Open <code>~/environment/dev-on-aws/lab6/swagger.json</code> in the <strong>editor</strong> and find these four pieces before you import anything:</p>
+  <ul class="small">
+    <li><code>securityDefinitions.CognitoAuth</code> — the authorizer you built by hand in Step 1, declared as code (<code>x-amazon-apigateway-authorizer</code>)</li>
+    <li><code>x-amazon-apigateway-request-validators</code> + <code>definitions.NewItem</code> — a <strong>request model</strong>: POST bodies must carry <code>title</code> (string) and <code>price</code> (number) or API Gateway rejects them with 400 before Lambda ever runs</li>
+    <li><code>paths./items.options</code> — a <strong>mock integration</strong> answering CORS preflight; its <code>requestTemplates</code> block is a VTL <strong>mapping template</strong>, the same mechanism non-proxy integrations use to reshape payloads</li>
+    <li><code>x-amazon-apigateway-integration</code> on every method — the Lambda proxy wiring from Lab 5a, repeated as code</li>
+  </ul>
 </section>
 
 <section>
-  <h2>Step 5 — Smoke Test All Methods <span class="time">7 min</span></h2>
+  <h2>Step 5 — Import &amp; Redeploy <span class="time">8 min</span></h2>
+  <pre><code>cd ~/environment/dev-on-aws/lab6
+sed -e "s/__ACCT__/$ACCT/g" \
+    -e "s/__POOL_ID__/$POOL_ID/g" \
+    -e "s|__LAMBDA_ARN__|$LAMBDA_ARN|g" \
+    -e "s/__USER_ID__/$USER_ID/g" \
+    swagger.json &gt; /tmp/swagger-filled.json
+
+# Overwrite the hand-built API with the definition-as-code
+aws apigateway put-rest-api --rest-api-id $API_ID \
+    --mode overwrite --body fileb:///tmp/swagger-filled.json
+
+# New methods need invoke permission on the Lambda
+aws lambda add-permission --function-name lab4-$USER_ID \
+    --statement-id swagger-$USER_ID \
+    --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:us-east-1:$ACCT:$API_ID/*"
+
+aws apigateway create-deployment --rest-api-id $API_ID --stage-name dev</code></pre>
+  <p class="small"><code>--mode overwrite</code> replaces every resource, method, and authorizer on the API with what the file declares — your Step 1–2 hand wiring is now reproducible from version control.</p>
+</section>
+
+<section>
+  <h2>Step 6 — Smoke Test Everything <span class="time">8 min</span></h2>
   <pre><code>H="-H Authorization:$ID_TOKEN"
 curl -s $H $URL | jq .                           # GET list
 curl -s $H -X POST $URL \
   -H "Content-Type: application/json" \
   -d '{"title":"from swagger","price":4.50}' | jq .   # POST
 curl -s $H $URL/ITEM-123 | jq .                  # GET one
-curl -s $H -X DELETE $URL/ITEM-123 -i             # DELETE</code></pre>
+curl -s $H -X DELETE $URL/ITEM-123 -i             # DELETE
+
+# Request model: body missing "price" → 400 before Lambda runs
+curl -s -o /dev/null -w "invalid body:  %{http_code}\n" $H \
+  -X POST $URL -H "Content-Type: application/json" -d '{"title":"no price"}'
+
+# CORS preflight: mock integration answers, no auth needed
+curl -s -i -X OPTIONS $URL | grep -i access-control</code></pre>
 </section>
 
 <section>
-  <h2>Success Criteria <span class="time">3 min</span></h2>
+  <h2>Success Criteria <span class="time">2 min</span></h2>
   <ul>
-    <li>✅ Authorizer created and attached to POST</li>
+    <li>✅ Authorizer created and attached to POST by hand (Steps 1–2)</li>
     <li>✅ No-token → 401, valid-token → 200</li>
-    <li>✅ All four methods (POST, GET /items, GET /items/{id}, DELETE /items/{id}) wired to Lambda with the Cognito authorizer</li>
-    <li>✅ All four methods respond under the <code>dev</code> stage</li>
+    <li>✅ Swagger import rebuilt the API: POST + GET <code>/items</code>, GET + DELETE <code>/items/{id}</code>, all Cognito-protected</li>
+    <li>✅ POST without <code>price</code> → 400 from the request validator (Lambda never invoked)</li>
+    <li>✅ <code>OPTIONS /items</code> returns <code>Access-Control-Allow-*</code> headers from the mock integration</li>
   </ul>
 </section>
 

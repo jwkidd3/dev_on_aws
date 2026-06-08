@@ -187,10 +187,10 @@ dev_on_aws/
 └── labs/files/              ← source files students clone via GitHub in Lab 1a
     ├── bootstrap.sh          ← "catch me up" setup for any lab
     ├── lab1/  (smoke_test.py)
-    ├── lab2/  (seed.py, process.py, make_get_url.py, make_put_url.py)
+    ├── lab2/  (seed.py, process.py, make_get_url.py, make_put_url.py, waiter_demo.py)
     ├── lab3/  (seed.py, bulk_load.py, query_filter.py, query_gsi.py, update_conditional.py, scan_demo.py)
     ├── lab4/  (handler.py, lambda-perms.json, notify.json)
-    ├── lab6/  (add_methods.sh, site-policy.json, web/*.html)
+    ├── lab6/  (swagger.json, site-policy.json, web/*.html)
     └── lab7/  (template.yaml, python/handler.py, python/requirements.txt)
 ```
 

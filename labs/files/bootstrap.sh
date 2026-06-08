@@ -272,6 +272,39 @@ ensure_cognito() {
   ok "ID_TOKEN captured"
 }
 
+#── Swagger import — Lab 6b's end state (full API as code) ────────────
+# Lab 6b overwrites the hand-built API with lab6/swagger.json: POST + GET
+# /items, GET + DELETE /items/{id}, OPTIONS (CORS mock), request validator,
+# all Cognito-protected. Labs after 6b need that shape.
+ensure_api_import() {
+  say "ensure_api_import"
+  local HAVE
+  HAVE=$(aws apigateway get-resources --rest-api-id "$API_ID" \
+         --query "items[?path=='/items/{id}'].id | [0]" --output text)
+  if [ -n "$HAVE" ] && [ "$HAVE" != "None" ]; then
+    skip "swagger import (/items/{id})"
+  else
+    local SRC="$FILES/lab6/swagger.json"
+    [ -f "$SRC" ] || die "missing $SRC — did you clone the course repo?"
+    local FILLED; FILLED=$(mktemp)
+    sed -e "s/__ACCT__/$ACCT/g" \
+        -e "s/__POOL_ID__/$POOL_ID/g" \
+        -e "s|__LAMBDA_ARN__|$LAMBDA_ARN|g" \
+        -e "s/__USER_ID__/$USER_ID/g" \
+        "$SRC" > "$FILLED"
+    aws apigateway put-rest-api --rest-api-id "$API_ID" \
+        --mode overwrite --body "fileb://$FILLED" >/dev/null
+    rm -f "$FILLED"
+    aws lambda add-permission --function-name "lab4-$USER_ID" \
+        --statement-id "swagger-$USER_ID" \
+        --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+        --source-arn "arn:aws:execute-api:$REGION:$ACCT:$API_ID/*" \
+        >/dev/null 2>&1 || true
+    aws apigateway create-deployment --rest-api-id "$API_ID" --stage-name dev >/dev/null
+    ok "swagger import (POST/GET /items, GET/DELETE /items/{id}, CORS, validator)"
+  fi
+}
+
 #── Static-site bucket (Lab 6c) ───────────────────────────────────────
 ensure_site() {
   say "ensure_site"
@@ -306,8 +339,9 @@ case "$LAB" in
   4a)             ensure_env; ensure_bucket; ensure_table ;;
   4b|5a)          ensure_env; ensure_bucket; ensure_table; ensure_lambda ;;
   6a)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api ;;
-  6b|7a|7b)       ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito ;;
-  6c)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito; ensure_site ;;
+  6b)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito ;;
+  7a|7b)          ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito; ensure_api_import ;;
+  6c)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito; ensure_api_import; ensure_site ;;
   *) echo "Unknown lab: $LAB  (expected 1b|2a|2b|3a|3b|4a|4b|5a|6a|6b|6c|7a|7b)" >&2; exit 2 ;;
 esac
 

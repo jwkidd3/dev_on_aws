@@ -82,6 +82,18 @@
 </section>
 
 <section>
+  <h2>CloudWatch Application Insights</h2>
+  <ul>
+    <li>Hand-tuning every alarm doesn't scale — Application Insights automates the baseline</li>
+    <li>Point it at a <strong>resource group</strong> (your Lambdas, API, tables); it discovers the components</li>
+    <li>Auto-creates the relevant metrics, alarms, and log-pattern monitors per service type</li>
+    <li>Anomaly detection groups related signals into one <strong>problem</strong> with a probable root cause — "DynamoDB throttling caused the API 5XX spike"</li>
+    <li>Best fit: a sensible day-one observability baseline; refine with hand-built alarms (previous slide) as you learn your traffic</li>
+  </ul>
+  <p class="small">Console path: CloudWatch → Insights → Application Insights → <em>Add an application</em> → pick a resource group. No agents needed for serverless components.</p>
+</section>
+
+<section>
   <h2>AWS X-Ray</h2>
   <ul>
     <li>Distributed tracing across Lambda, API GW, DynamoDB, S3</li>

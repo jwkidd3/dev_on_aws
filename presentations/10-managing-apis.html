@@ -65,7 +65,8 @@
     <li>The default; simplest mental model</li>
     <li>API GW → Lambda with <code>{path, httpMethod, headers, body, requestContext}</code></li>
     <li>Lambda returns <code>{statusCode, headers, body}</code></li>
-    <li>Mapping templates (VTL) only apply to non-proxy REST integrations</li>
+    <li><strong>Mapping templates</strong> (VTL) apply only to <em>non-proxy</em> REST integrations — a template reshapes the request before the backend and the response after it</li>
+    <li>Proxy skips templates entirely; you'll still meet one in Lab 6b, where a <strong>mock integration</strong> uses a <code>requestTemplates</code> block to answer CORS preflight</li>
   </ul>
 </section>
 

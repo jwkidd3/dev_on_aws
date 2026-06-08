@@ -2,10 +2,11 @@
 # -----------------------------------------------------------------------------
 # Clean up orphaned resources from prior `run.sh` runs.
 #
-# Every resource the validator creates starts with "labval-" (S3, DynamoDB,
-# Lambda, IAM, API Gateway, Cognito, CloudFormation, logs). This script
-# finds and deletes any that are still present — useful if a previous run.sh
-# was interrupted before its trap cleanup completed.
+# Every resource the validator creates carries the "labval" marker, and the
+# bootstrap.sh stage uses a synthetic "bsval<stamp>" user (names like
+# student-bsval*-uploads, Items-bsval*, dev-on-aws-bsval*). This script finds
+# and deletes any that are still present — useful if a previous run.sh was
+# interrupted before its trap cleanup completed.
 #
 # Usage:
 #   ./cleanup-orphans.sh             # dry run: list what would be deleted
@@ -50,9 +51,9 @@ for S in $STACKS; do
 done
 
 # ----- Cognito user pools -----
-step "Cognito user pools: labval-*"
+step "Cognito user pools: labval-* / dev-on-aws-bsval*"
 POOLS=$(aws cognito-idp list-user-pools --max-results 60 \
-  --query "UserPools[?starts_with(Name, 'labval-')].Id" --output text 2>/dev/null)
+  --query "UserPools[?contains(Name, 'labval') || starts_with(Name, 'dev-on-aws-bsval')].Id" --output text 2>/dev/null)
 for P in $POOLS; do
   FOUND=$((FOUND+1))
   info "user pool $P"
@@ -64,9 +65,10 @@ for P in $POOLS; do
 done
 
 # ----- API Gateway REST APIs -----
-step "API Gateway REST APIs: labval-*"
+step "API Gateway REST APIs: *labval* / dev-on-aws-bsval*"
+# contains(): the Lab 6b swagger import renames the API to dev-on-aws-<prefix>
 APIS=$(aws apigateway get-rest-apis \
-  --query "items[?starts_with(name, 'labval-')].id" --output text 2>/dev/null)
+  --query "items[?contains(name, 'labval') || starts_with(name, 'dev-on-aws-bsval')].id" --output text 2>/dev/null)
 for A in $APIS; do
   FOUND=$((FOUND+1))
   info "rest-api $A"
@@ -78,9 +80,9 @@ for A in $APIS; do
 done
 
 # ----- Lambda functions -----
-step "Lambda functions: lab4-labval-*"
+step "Lambda functions: lab4-labval-* / lab4-bsval*"
 FNS=$(aws lambda list-functions \
-  --query "Functions[?starts_with(FunctionName, 'lab4-labval-')].FunctionName" \
+  --query "Functions[?starts_with(FunctionName, 'lab4-labval-') || starts_with(FunctionName, 'lab4-bsval')].FunctionName" \
   --output text 2>/dev/null)
 for F in $FNS; do
   FOUND=$((FOUND+1))
@@ -93,9 +95,9 @@ for F in $FNS; do
 done
 
 # ----- IAM roles (StudentLambdaRole-labval-*) -----
-step "IAM roles: StudentLambdaRole-labval-*"
+step "IAM roles: StudentLambdaRole-labval-* / -bsval*"
 ROLES=$(aws iam list-roles \
-  --query "Roles[?starts_with(RoleName, 'StudentLambdaRole-labval-')].RoleName" \
+  --query "Roles[?starts_with(RoleName, 'StudentLambdaRole-labval-') || starts_with(RoleName, 'StudentLambdaRole-bsval')].RoleName" \
   --output text 2>/dev/null)
 for R in $ROLES; do
   FOUND=$((FOUND+1))
@@ -118,9 +120,9 @@ for R in $ROLES; do
 done
 
 # ----- DynamoDB tables -----
-step "DynamoDB tables: Items-labval-*"
+step "DynamoDB tables: Items-labval-* / Items-bsval*"
 TABLES=$(aws dynamodb list-tables \
-  --query "TableNames[?starts_with(@, 'Items-labval-')]" --output text 2>/dev/null)
+  --query "TableNames[?starts_with(@, 'Items-labval-') || starts_with(@, 'Items-bsval')]" --output text 2>/dev/null)
 for T in $TABLES; do
   FOUND=$((FOUND+1))
   info "table $T"
@@ -132,7 +134,7 @@ for T in $TABLES; do
 done
 
 # ----- S3 buckets -----
-step "S3 buckets: labval-*"
+step "S3 buckets: labval-* / student-bsval*"
 empty_versioned_bucket() {
   local B="$1"
   aws s3api list-object-versions --bucket "$B" --output json 2>/dev/null \
@@ -151,7 +153,7 @@ for i in range(0, len(items), 1000):
   aws s3 rb "s3://$B" --force >/dev/null 2>&1
 }
 BUCKETS=$(aws s3api list-buckets \
-  --query "Buckets[?starts_with(Name, 'labval-')].Name" --output text 2>/dev/null)
+  --query "Buckets[?starts_with(Name, 'labval-') || starts_with(Name, 'student-bsval')].Name" --output text 2>/dev/null)
 for B in $BUCKETS; do
   FOUND=$((FOUND+1))
   info "bucket $B"
@@ -166,7 +168,7 @@ for B in $BUCKETS; do
 done
 
 # ----- CloudWatch log groups -----
-step "CloudWatch log groups: /aws/lambda/lab4-labval-*, /aws/apigateway/labval-*"
+step "CloudWatch log groups: /aws/lambda/lab4-{labval-,bsval}*, /aws/apigateway/labval-*"
 list_log_groups() {
   # Robust: JSON → Python, no --output text pagination surprises
   aws logs describe-log-groups --log-group-name-prefix "$1" --output json 2>/dev/null \
@@ -180,7 +182,7 @@ try:
 except Exception:
     pass'
 }
-for PFX in "/aws/lambda/lab4-labval-" "/aws/apigateway/labval-"; do
+for PFX in "/aws/lambda/lab4-labval-" "/aws/lambda/lab4-bsval" "/aws/apigateway/labval-"; do
   while IFS= read -r G; do
     [ -z "$G" ] && continue
     FOUND=$((FOUND+1))
@@ -195,7 +197,7 @@ done
 
 echo
 if [ "$MODE" = "dry-run" ]; then
-  printf "\033[1mDry run — %d resources match 'labval-*'. Re-run with --delete to remove.\033[0m\n" "$FOUND"
+  printf "\033[1mDry run — %d resources match 'labval'/'bsval'. Re-run with --delete to remove.\033[0m\n" "$FOUND"
   exit 0
 else
   printf "\033[1mFOUND %d · DELETED %d · ERRORS %d\033[0m\n" "$FOUND" "$DELETED" "$ERR"

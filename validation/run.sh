@@ -643,6 +643,56 @@ if [ $QUICK -eq 0 ]; then
         --query id --output text 2>/dev/null) \
         && pass "create-authorizer" \
         || fail "create-authorizer" "non-zero"
+
+      # Lab 6b Steps 5–6 — Swagger overwrite import using the real lab file
+      SWAGGER_SRC="$(cd "$(dirname "$0")/.." && pwd)/labs/files/lab6/swagger.json"
+      if [ ! -f "$SWAGGER_SRC" ]; then
+        fail "swagger.json present" "$SWAGGER_SRC not found"
+      else
+        sed -e "s/__ACCT__/$ACCT/g" \
+            -e "s/__POOL_ID__/$POOL_ID/g" \
+            -e "s|__LAMBDA_ARN__|arn:aws:lambda:$REGION:$ACCT:function:$LAMBDA_FN|g" \
+            -e "s/__USER_ID__/$PREFIX/g" \
+            "$SWAGGER_SRC" > "$TMP/swagger-filled.json"
+        try "put-rest-api --mode overwrite (swagger import)" \
+          aws apigateway put-rest-api --rest-api-id "$REST_API" \
+              --mode overwrite --body "fileb://$TMP/swagger-filled.json"
+
+        ID_RES=$(aws apigateway get-resources --rest-api-id "$REST_API" \
+            --query "items[?path=='/items/{id}'].id | [0]" --output text 2>/dev/null)
+        [ -n "$ID_RES" ] && [ "$ID_RES" != "None" ] \
+          && pass "import created /items/{id}" \
+          || fail "import /items/{id}" "resource not found after import"
+
+        ITEMS_RES=$(aws apigateway get-resources --rest-api-id "$REST_API" \
+            --query "items[?path=='/items'].id | [0]" --output text 2>/dev/null)
+        aws apigateway get-method --rest-api-id "$REST_API" \
+            --resource-id "$ITEMS_RES" --http-method OPTIONS >/dev/null 2>&1 \
+          && pass "import created OPTIONS (CORS mock) on /items" \
+          || fail "import OPTIONS /items" "method not found"
+
+        POST_AUTH=$(aws apigateway get-method --rest-api-id "$REST_API" \
+            --resource-id "$ITEMS_RES" --http-method POST \
+            --query authorizationType --output text 2>/dev/null)
+        [ "$POST_AUTH" = "COGNITO_USER_POOLS" ] \
+          && pass "imported POST is Cognito-protected" \
+          || fail "imported POST auth" "authorizationType=$POST_AUTH"
+
+        VALIDATORS=$(aws apigateway get-request-validators --rest-api-id "$REST_API" \
+            --query "length(items)" --output text 2>/dev/null)
+        [ "${VALIDATORS:-0}" -ge 1 ] \
+          && pass "import created request validator" \
+          || fail "import request validator" "none found"
+
+        try "add-permission (swagger wildcard)" \
+          aws lambda add-permission --function-name "$LAMBDA_FN" \
+            --statement-id "swagger-$STAMP" \
+            --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+            --source-arn "arn:aws:execute-api:$REGION:$ACCT:$REST_API/*"
+
+        try "redeploy stage=dev after import" \
+          aws apigateway create-deployment --rest-api-id "$REST_API" --stage-name dev
+      fi
     fi
   fi
 fi

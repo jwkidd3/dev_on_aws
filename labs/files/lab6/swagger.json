@@ -1,0 +1,154 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "dev-on-aws-__USER_ID__",
+    "description": "Items API — full definition as code. Imported over the hand-built Lab 5a API in Lab 6b.",
+    "version": "1.0"
+  },
+  "schemes": ["https"],
+  "securityDefinitions": {
+    "CognitoAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "x-amazon-apigateway-authtype": "cognito_user_pools",
+      "x-amazon-apigateway-authorizer": {
+        "type": "cognito_user_pools",
+        "providerARNs": [
+          "arn:aws:cognito-idp:us-east-1:__ACCT__:userpool/__POOL_ID__"
+        ]
+      }
+    }
+  },
+  "x-amazon-apigateway-request-validators": {
+    "validate-body": {
+      "validateRequestBody": true,
+      "validateRequestParameters": false
+    }
+  },
+  "definitions": {
+    "NewItem": {
+      "type": "object",
+      "required": ["title", "price"],
+      "properties": {
+        "user":  { "type": "string" },
+        "title": { "type": "string", "minLength": 1 },
+        "price": { "type": "number" }
+      }
+    }
+  },
+  "paths": {
+    "/items": {
+      "get": {
+        "security": [{ "CognitoAuth": [] }],
+        "responses": { "200": { "description": "List items" } },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/__LAMBDA_ARN__/invocations",
+          "passthroughBehavior": "when_no_match"
+        }
+      },
+      "post": {
+        "consumes": ["application/json"],
+        "security": [{ "CognitoAuth": [] }],
+        "x-amazon-apigateway-request-validator": "validate-body",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "NewItem",
+            "required": true,
+            "schema": { "$ref": "#/definitions/NewItem" }
+          }
+        ],
+        "responses": { "200": { "description": "Create item" } },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/__LAMBDA_ARN__/invocations",
+          "passthroughBehavior": "when_no_match"
+        }
+      },
+      "options": {
+        "responses": {
+          "200": {
+            "description": "CORS preflight",
+            "headers": {
+              "Access-Control-Allow-Origin":  { "type": "string" },
+              "Access-Control-Allow-Methods": { "type": "string" },
+              "Access-Control-Allow-Headers": { "type": "string" }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin":  "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{id}": {
+      "get": {
+        "security": [{ "CognitoAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "type": "string" }
+        ],
+        "responses": { "200": { "description": "Get one item" } },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/__LAMBDA_ARN__/invocations",
+          "passthroughBehavior": "when_no_match"
+        }
+      },
+      "delete": {
+        "security": [{ "CognitoAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "type": "string" }
+        ],
+        "responses": { "200": { "description": "Delete item" } },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/__LAMBDA_ARN__/invocations",
+          "passthroughBehavior": "when_no_match"
+        }
+      },
+      "options": {
+        "responses": {
+          "200": {
+            "description": "CORS preflight",
+            "headers": {
+              "Access-Control-Allow-Origin":  { "type": "string" },
+              "Access-Control-Allow-Methods": { "type": "string" },
+              "Access-Control-Allow-Headers": { "type": "string" }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin":  "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,DELETE,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
