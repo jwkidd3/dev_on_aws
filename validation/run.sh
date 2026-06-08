@@ -239,7 +239,12 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
     BS_TABLE="Items-${BS_USER_ID}"
 
     # Redirect ~/.dev-on-aws.env into tempdir so the validator doesn't
-    # clobber the operator's real env file.
+    # clobber the operator's real env file. Pin the AWS credential/config
+    # paths to the real HOME first — otherwise a laptop run (README option 2)
+    # loses ~/.aws and every bootstrap call fails with "Unable to locate
+    # credentials". Harmless in Cloud9, where creds come from IMDS.
+    export AWS_SHARED_CREDENTIALS_FILE="${AWS_SHARED_CREDENTIALS_FILE:-$HOME/.aws/credentials}"
+    export AWS_CONFIG_FILE="${AWS_CONFIG_FILE:-$HOME/.aws/config}"
     HOME_ORIG="$HOME"; export HOME="$TMP"
     : > "$TMP/.dev-on-aws.env"
 
