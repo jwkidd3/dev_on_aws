@@ -65,8 +65,24 @@
     <li>The default; simplest mental model</li>
     <li>API GW → Lambda with <code>{path, httpMethod, headers, body, requestContext}</code></li>
     <li>Lambda returns <code>{statusCode, headers, body}</code></li>
-    <li><strong>Mapping templates</strong> (VTL) apply only to <em>non-proxy</em> REST integrations — a template reshapes the request before the backend and the response after it</li>
-    <li>Proxy skips templates entirely; you'll still meet one in Lab 6b, where a <strong>mock integration</strong> uses a <code>requestTemplates</code> block to answer CORS preflight</li>
+    <li>Proxy passes payloads through untouched — the alternative is next</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Mapping Templates (VTL)</h2>
+  <p class="small">With <em>non-proxy</em> (AWS) integrations, a <strong>mapping template</strong> — written in Velocity Template Language — reshapes the request before the backend sees it, and the response before the client does:</p>
+  <pre><code>{
+  "title"      : $input.json('$.title'),
+  "priceCents" : #set($c = $input.path('$.price') * 100)$c,
+  "sourceIp"   : "$context.identity.sourceIp",
+  "requestId"  : "$context.requestId"
+}</code></pre>
+  <ul>
+    <li><code>$input</code> — the incoming payload (<code>.json()</code> keeps JSON typing, <code>.path()</code> gives raw values)</li>
+    <li><code>$context</code> — gateway metadata the client never sent: caller IP, request ID, stage, authorizer claims</li>
+    <li>Backend stays decoupled — clients can send <code>price</code> in dollars while the backend receives cents</li>
+    <li>Proxy integration skips all of this; you'll still meet a template in Lab 6b, where a <strong>mock integration</strong> answers CORS preflight via a <code>requestTemplates</code> block</li>
   </ul>
 </section>
 

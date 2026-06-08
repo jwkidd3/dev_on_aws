@@ -37,6 +37,18 @@
 </section>
 
 <section>
+  <h2>How Auth Evolved</h2>
+  <ul>
+    <li><strong>Basic auth</strong> — username:password on every request; credentials everywhere, no revocation</li>
+    <li><strong>Server-side sessions</strong> — cookie + session store; revocable, but stateful and single-origin</li>
+    <li><strong>SAML</strong> — enterprise SSO across organizations; XML-heavy, browser-redirect choreography</li>
+    <li><strong>OAuth 2.0</strong> — <em>delegated authorization</em>: apps get scoped tokens, never your password</li>
+    <li><strong>OpenID Connect</strong> — an identity layer on OAuth 2.0; signed <strong>JWTs</strong> carry who you are</li>
+  </ul>
+  <p class="small">Each step traded a weakness for a protocol. Cognito is a managed OIDC provider — everything below this slide builds on that last step.</p>
+</section>
+
+<section>
   <h2>Don't Roll Your Own</h2>
   <ul>
     <li>Password hashing, MFA, password reset, email verification — all easy to subtly break</li>
