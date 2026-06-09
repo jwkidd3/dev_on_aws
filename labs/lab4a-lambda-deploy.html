@@ -31,6 +31,12 @@
   .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
     letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
     background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+  .reveal section.dense { font-size: 0.86em; }
+  .reveal section.dense h2 { margin-bottom: 0.3em; }
+  .reveal section.dense ul, .reveal section.dense ol { line-height: 1.28; }
+  .reveal section.dense li { margin-bottom: 0.15em; }
+  .reveal section.dense pre code { font-size: 0.5em; line-height: 1.22; padding: 8px 12px; }
+  .reveal section.dense .small { font-size: 0.66em; }
 </style>
 </head>
 <body>
@@ -63,7 +69,7 @@
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 4a</code> creates-or-reuses the uploads bucket and <code>Items-$USER_ID</code> table so the handler has something to read/write.</p>
 </section>
 
-<section>
+<section class="dense">
   <h2>Step 1 — Create the Function &amp; Role <span class="time">6 min</span></h2>
   <p class="small"><strong>Wherever this slide shows <code>user1</code>, substitute your own user id</strong> (<code>user2</code>, <code>user3</code>, …). The Console doesn't expand shell vars, and every lab downstream looks up <code>lab4-$USER_ID</code> and <code>StudentLambdaRole-$USER_ID</code> literally.</p>
   <ol>

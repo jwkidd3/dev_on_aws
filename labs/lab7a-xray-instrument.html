@@ -31,6 +31,12 @@
   .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
     letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
     background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+  .reveal section.dense { font-size: 0.86em; }
+  .reveal section.dense h2 { margin-bottom: 0.3em; }
+  .reveal section.dense ul, .reveal section.dense ol { line-height: 1.28; }
+  .reveal section.dense li { margin-bottom: 0.15em; }
+  .reveal section.dense pre code { font-size: 0.5em; line-height: 1.22; padding: 8px 12px; }
+  .reveal section.dense .small { font-size: 0.66em; }
 </style>
 </head>
 <body>
@@ -73,7 +79,7 @@ pip install aws-xray-sdk -t .       # vendor into the package
 echo "aws-xray-sdk" &gt; requirements.txt</code></pre>
 </section>
 
-<section>
+<section class="dense">
   <h2>Step 2 — Swap in the Instrumented Handler <span class="time">7 min</span></h2>
   <p class="small">The X-Ray-instrumented handler is already on disk at <code>~/environment/dev-on-aws/lab7/python/handler.py</code>. Overwrite the Lab 4 version with it:</p>
   <pre><code>cp ~/environment/dev-on-aws/lab7/python/handler.py \

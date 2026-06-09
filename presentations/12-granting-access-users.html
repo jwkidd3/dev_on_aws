@@ -25,7 +25,14 @@
   .reveal section[data-background-color] li { color:#fff; }
   .reveal .lab-tag { display:inline-block; background:#fff; color:var(--aws-navy);
     padding:6px 14px; border-radius:20px; font-size:0.6em; font-weight:700;
-    letter-spacing:1px; text-transform:uppercase; }</style>
+    letter-spacing:1px; text-transform:uppercase; }
+  .reveal section.dense { font-size: 0.86em; }
+  .reveal section.dense h2 { margin-bottom: 0.3em; }
+  .reveal section.dense ul, .reveal section.dense ol { line-height: 1.28; }
+  .reveal section.dense li { margin-bottom: 0.15em; }
+  .reveal section.dense pre code { font-size: 0.5em; line-height: 1.22; padding: 8px 12px; }
+  .reveal section.dense .small { font-size: 0.66em; }
+</style>
 </head>
 <body>
 <div class="reveal"><div class="slides">
@@ -36,7 +43,7 @@
   <p class="small">Amazon Cognito — sign-up, sign-in, JWTs.</p>
 </section>
 
-<section>
+<section class="dense">
   <h2>How Auth Evolved</h2>
   <ul>
     <li><strong>Basic auth</strong> — username:password on every request; credentials everywhere, no revocation</li>

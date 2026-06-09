@@ -31,6 +31,12 @@
   .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
     letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
     background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+  .reveal section.dense { font-size: 0.86em; }
+  .reveal section.dense h2 { margin-bottom: 0.3em; }
+  .reveal section.dense ul, .reveal section.dense ol { line-height: 1.28; }
+  .reveal section.dense li { margin-bottom: 0.15em; }
+  .reveal section.dense pre code { font-size: 0.5em; line-height: 1.22; padding: 8px 12px; }
+  .reveal section.dense .small { font-size: 0.66em; }
 </style>
 </head>
 <body>
@@ -81,7 +87,7 @@ python3 seed.py
 # processed 5 objects into s3://student-…-uploads-…/outbox/</code></pre>
 </section>
 
-<section>
+<section class="dense">
   <h2>Step 3 — Presigned GET <span class="time">6 min</span></h2>
   <p class="small">Open <code>lab2/make_get_url.py</code>. It prints one presigned GET URL on stdout; an optional TTL argument (default 300 s) lets us demo expiry. We capture the URL into an env var so <code>curl</code> can use it directly.</p>
   <pre><code># Capture a 300-second URL into $GET_URL

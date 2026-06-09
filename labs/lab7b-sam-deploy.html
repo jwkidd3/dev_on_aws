@@ -31,6 +31,12 @@
   .reveal .time { display:inline-block; font-size:0.38em; color:#888; font-weight:500;
     letter-spacing:1px; text-transform:uppercase; vertical-align:middle; margin-left:10px;
     background:#f4f4f4; padding:3px 8px; border-radius:10px; }
+  .reveal section.dense { font-size: 0.86em; }
+  .reveal section.dense h2 { margin-bottom: 0.3em; }
+  .reveal section.dense ul, .reveal section.dense ol { line-height: 1.28; }
+  .reveal section.dense li { margin-bottom: 0.15em; }
+  .reveal section.dense pre code { font-size: 0.5em; line-height: 1.22; padding: 8px 12px; }
+  .reveal section.dense .small { font-size: 0.66em; }
 </style>
 </head>
 <body>
@@ -63,7 +69,7 @@
   <p class="small"><strong>Starting fresh?</strong> <code>bash ~/environment/dev-on-aws/bootstrap.sh 7b</code> creates-or-reuses the user pool, client, and uploads bucket the SAM template references.</p>
 </section>
 
-<section>
+<section class="dense">
   <h2>Step 1 — Review the SAM Project <span class="time">8 min</span></h2>
   <p class="small">The SAM project is already on disk. Explore it in the Cloud9 file tree:</p>
   <pre><code>cd ~/environment/dev-on-aws/lab7
@@ -80,7 +86,7 @@ ls -R
   </ul>
 </section>
 
-<section>
+<section class="dense">
   <h2>Step 2 — Build &amp; First Deploy <span class="time">7 min</span></h2>
   <p class="small">Our Lambda's <code>Runtime: python3.12</code>. AL2023 Cloud9 ships Python 3.9, so <code>sam build</code> either needs Python 3.12 locally or an official AWS Docker builder image. Cloud9 has Docker preinstalled — use <code>--use-container</code>; it's the reliable path.</p>
   <pre><code>cd ~/environment/dev-on-aws/lab7
