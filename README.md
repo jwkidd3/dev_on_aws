@@ -30,6 +30,38 @@ Software developers, solution architects, and IT professionals with:
 - **Credentials:** Cloud9's default **AWS Managed Temporary Credentials (AMTC)** block a handful of IAM/STS/Lambda calls the labs need. In **Lab 1a** students attach **`LabRole`** to the Cloud9 EC2 instance and **turn AMTC off** so the SDK/CLI pick up the role via IMDS — no `aws configure`, no access keys on laptops.
 - **Editor vs. terminal:** class convention set in Lab 1a — source/config files are authored in the Cloud9 **editor**; commands ≤ ~5 lines go into the **terminal**. Never paste multi-line source into a shell prompt.
 
+## Capacity — 25 students, one account, one region
+
+The course is built for a **single shared AWS account** in **`us-east-1` only**.
+Up to **~25 students** run concurrently, each isolated by their `userN` prefix —
+no per-student account or second region required. What makes that safe, and what
+to pre-check before a delivery:
+
+- **Per-student namespacing.** Every resource a student creates embeds their
+  `USER_ID`: `student-userN-uploads-*`, `Items-userN`, `lab4-userN`,
+  `StudentLambdaRole-userN`, API `dev-on-aws-userN`, Cognito pool
+  `dev-on-aws-userN`, SAM stack `dev-on-aws-userN`. No fixed global names (no
+  Cognito hosted-UI domain; SAM lets CloudFormation auto-name table/function from
+  the per-student stack). 25 students never collide.
+- **The one footgun — `USER_ID`.** In Cloud9 the SDK runs as the **shared
+  `LabRole`**, so anything that auto-derived an ID from the caller would get
+  `LabRole` for *everyone*. Students set `export USER_ID=userN` in **Lab 1b**;
+  `bootstrap.sh` now **hard-refuses** to run if `USER_ID` is empty or `LabRole`,
+  so a student who forgets gets a clear error instead of silently colliding with
+  the whole class.
+- **Account quotas to raise before class** (defaults are per-account-per-region):
+  - **EC2 On-Demand Standard vCPUs ≥ ~50** — 25 × Cloud9 `m5.large` (2 vCPU) = 50.
+    This is the most common blocker on a fresh account; request the increase early.
+  - **S3 general-purpose buckets** — ~2 persistent per student (uploads + site) ≈
+    50, plus the shared `aws-sam-cli-managed-default-*`. Under the 100 default, but
+    raise it if you run back-to-back cohorts without a sweep between them.
+  - API Gateway, Lambda, DynamoDB, Cognito, IAM roles: 25× usage sits well under
+    defaults. API Gateway control-plane calls are account-throttled, so 25
+    simultaneous create/delete may briefly retry — not a blocker.
+- **Reset between cohorts.** Tear down student resources between deliveries (the
+  `validation/cleanup-orphans.sh` pattern, adapted to the `student-*`/`Items-*`
+  prefixes, or delete by prefix) so bucket/stack counts don't accumulate.
+
 ## Module → Lab Map
 
 Which labs each teaching module sets up. Modules without labs are pure concept / recap. Labs always follow their paired module on the schedule (same day).

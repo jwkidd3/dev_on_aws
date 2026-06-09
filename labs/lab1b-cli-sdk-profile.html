@@ -94,7 +94,7 @@ aws lambda list-functions</code></pre>
   <p class="small">Every lab after this one saves variables to <code>~/.dev-on-aws.env</code>. Set it up once — in the Cloud9 terminal:</p>
   <pre><code>cat &gt; ~/.dev-on-aws.env &lt;&lt;'EOF'
 export AWS_REGION=us-east-1
-export USER_ID=user1    # change to your assigned user
+export USER_ID=user1    # *** SET THIS TO YOUR ASSIGNED USER (user2, user3, …) ***
 EOF
 
 # Capture your account ID once — every other lab uses it
@@ -105,6 +105,7 @@ echo 'source ~/.dev-on-aws.env' &gt;&gt; ~/.bashrc
 source ~/.dev-on-aws.env
 echo "You are $USER_ID in $AWS_REGION (account $ACCT)"</code></pre>
   <p class="small">This one is small enough for a terminal heredoc. Re-source with <code>source ~/.dev-on-aws.env</code> if you open a new terminal.</p>
+  <p class="small">⚠️ <strong>Use your own <code>USER_ID</code>.</strong> The whole class shares one AWS account; your user ID is what keeps your buckets, table, and stack separate from everyone else's. If you skip this, <code>bootstrap.sh</code> refuses to run rather than collide on shared names.</p>
 </section>
 
 <section>

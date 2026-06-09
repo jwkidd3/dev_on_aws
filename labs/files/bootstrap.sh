@@ -41,6 +41,13 @@ ensure_env() {
     USER_ID=$(echo "$ARN" | sed -nE 's|.*:(user|assumed-role)/([^/]+).*|\2|p')
     [ -z "$USER_ID" ] && die "could not derive USER_ID from $ARN"
   fi
+  # In Cloud9 the SDK runs as the shared LabRole, so an auto-derived USER_ID
+  # is "LabRole" for EVERY student — 25 students would collide on identical
+  # resource names (Items-LabRole, lab4-LabRole, …). Refuse it and demand the
+  # per-student value. Students set this in Lab 1b: export USER_ID=user1.
+  if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "LabRole" ]; then
+    die "USER_ID resolved to '${USER_ID:-empty}' (the shared role). Every student would collide on the same resource names. Set your assigned user first, then re-run:  export USER_ID=user1"
+  fi
   ACCT=$(aws sts get-caller-identity --query Account --output text)
   putenv "USER_ID=$USER_ID"
   putenv "ACCT=$ACCT"
