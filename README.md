@@ -26,6 +26,7 @@ Software developers, solution architects, and IT professionals with:
 - **Usernames:** `user1`, `user2`, `user3`, … — handed out at class start
 - **Cloud9 environment:** students **create their own** in Lab 1a — new EC2, **m5.large**, **SSH** connection, Amazon Linux 2023, 30-min idle timeout
 - **Pre-seeded per student:** the IAM user `userN` plus prefix-enforcing policies attached to that user, and a shared **`LabRole`** that has the broader permissions the labs exercise (IAM, STS, Lambda, SAM/CloudFormation, etc.). *Everything else* — Cloud9, DynamoDB tables, Lambda roles, S3 buckets, Cognito pools, API Gateway, SAM stacks — students create in the labs.
+- **Instructor pre-class setup:** run **`admin/setup-account.sh --apply`** once per account. It creates `LabRole` (+ its instance profile, EC2 trust, PowerUserAccess + the IAM writes the labs need), the **`RestrictToUsEast1`** region-lock policy, and a **`students`** group that region-locks every `userN`. Idempotent; dry-run by default. See [admin/README.md](admin/README.md).
 - **Prefix convention:** every resource a student creates starts with their user ID (`student-user1-…`, `Items-user1`, `lab4-user1`, `StudentLambdaRole-user1`). The IAM policies enforce this.
 - **Credentials:** Cloud9's default **AWS Managed Temporary Credentials (AMTC)** block a handful of IAM/STS/Lambda calls the labs need. In **Lab 1a** students attach **`LabRole`** to the Cloud9 EC2 instance and **turn AMTC off** so the SDK/CLI pick up the role via IMDS — no `aws configure`, no access keys on laptops.
 - **Editor vs. terminal:** class convention set in Lab 1a — source/config files are authored in the Cloud9 **editor**; commands ≤ ~5 lines go into the **terminal**. Never paste multi-line source into a shell prompt.
@@ -51,7 +52,8 @@ to pre-check before a delivery:
   the whole class.
 - **Account quotas to raise before class** (defaults are per-account-per-region):
   - **EC2 On-Demand Standard vCPUs ≥ ~50** — 25 × Cloud9 `m5.large` (2 vCPU) = 50.
-    This is the most common blocker on a fresh account; request the increase early.
+    The most common blocker on a *fresh* account; request the increase early.
+    (The shared `kiddcorp` account is already provisioned well above this.)
   - **S3 general-purpose buckets** — ~2 persistent per student (uploads + site) ≈
     50, plus the shared `aws-sam-cli-managed-default-*`. Under the 100 default, but
     raise it if you run back-to-back cohorts without a sweep between them.
@@ -61,6 +63,11 @@ to pre-check before a delivery:
 - **Reset between cohorts.** Tear down student resources between deliveries (the
   `validation/cleanup-orphans.sh` pattern, adapted to the `student-*`/`Items-*`
   prefixes, or delete by prefix) so bucket/stack counts don't accumulate.
+- **Region lock.** `admin/setup-account.sh` attaches `RestrictToUsEast1` to every
+  `userN` and to `LabRole`, so students can only create resources in `us-east-1` —
+  enforced, not just convention. Global services (IAM, STS, Route 53, CloudFront)
+  still work. This account is the org **management** account, where SCPs don't
+  apply, so the lock is an IAM policy rather than an SCP.
 
 ## Module → Lab Map
 
@@ -210,6 +217,9 @@ resources and skips them.
 dev_on_aws/
 ├── README.md                ← this file
 ├── Developing on AWS.docx   ← source outline
+├── admin/                   ← instructor account setup (LabRole + region lock)
+│   ├── setup-account.sh
+│   └── restrict-region-us-east-1.json
 ├── presentations/           ← 15 teaching decks
 │   ├── 01-course-overview.html
 │   └── … 14 more …
