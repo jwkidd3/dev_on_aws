@@ -17,7 +17,7 @@ Cloud9).
 |---|----------|---------|
 | 1 | `RestrictToUsEast1` (managed policy) | Denies every regional action where `aws:RequestedRegion != us-east-1`. Global services (IAM, STS, Route 53, CloudFront, WAF, Shield, Organizations, billing) are excluded so the labs keep working. |
 | 2 | `LabRole` (+ instance profile) | The shared role students attach to their Cloud9 EC2 in Lab 1a. Trusts `ec2.amazonaws.com`; carries `PowerUserAccess` + an inline policy for the IAM writes the labs need (create/delete roles & policies, instance profiles, `PassRole` to Lambda/API Gateway) + the region lock. |
-| 3 | `students` group | `RestrictToUsEast1` attached; every `userN` enrolled, so console actions as the IAM user are region-locked too. |
+| 3 | `students` group | `AdministratorAccess` **+** `RestrictToUsEast1` attached; every `userN` enrolled. Net effect: each student is a **full administrator scoped to us-east-1** (admin everywhere in-region; denied in other regions; global services still work). Students are admins by design — isolated by the `USER_ID` naming convention, not by IAM. |
 
 Root and the `admins` group are left untouched (root is never bound by an IAM
 policy anyway, so you can't lock yourself out).

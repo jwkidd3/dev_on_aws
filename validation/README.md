@@ -85,6 +85,13 @@ What cleanup intentionally does **not** remove:
   shared, per-account bucket that real deployments also reuse; leaving it
   avoids breaking subsequent runs and it costs fractions of a cent per month.
 
+> **Gotcha — `sam deploy` fails with "S3 Bucket does not exist."** If a broad
+> sweep (or the S3 console) deletes *every* bucket, the SAM-managed artifact
+> bucket goes with it — but the `aws-sam-cli-managed-default` CloudFormation
+> stack survives and still points `--resolve-s3` at the now-missing bucket.
+> Fix: `aws cloudformation delete-stack --stack-name aws-sam-cli-managed-default
+> --region us-east-1`, then re-run — SAM recreates the bucket on the next deploy.
+
 If a cleanup step fails (rare; usually because a prior step never got that
 far), the script reports it as a failed cleanup — check the AWS console and
 delete by hand if needed, or use the orphan sweeper below.

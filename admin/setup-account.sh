@@ -9,8 +9,13 @@
 #                            in Lab 1a (EC2 trust), broad enough for every lab,
 #                            region-locked to us-east-1, + an instance profile so
 #                            it can be attached to an instance.
-#   3. students group      — RestrictToUsEast1 attached; every userN enrolled so
-#                            their console actions are region-locked too.
+#   3. students group      — AdministratorAccess + RestrictToUsEast1 attached;
+#                            every userN enrolled. Net effect: each student is a
+#                            full administrator, but only inside us-east-1
+#                            (explicit deny wins outside it; global services
+#                            like IAM/STS stay available). This is intentional —
+#                            students are admins by design, isolated by naming
+#                            convention (USER_ID prefix), not by IAM.
 #
 # This account is the ORG MANAGEMENT account, so SCPs don't restrict it — the
 # region lock is enforced with IAM policies instead. Root and the `admins`
@@ -115,6 +120,10 @@ echo; echo "3) students group + region lock on userN"
 aws iam get-group --group-name "$GROUP" >/dev/null 2>&1 \
   && echo "   group $GROUP exists" \
   || run aws iam create-group --group-name "$GROUP"
+# Students are full admins, but only in us-east-1: AdministratorAccess grants
+# everything, RestrictToUsEast1's explicit deny claws back non-us-east-1 actions.
+run aws iam attach-group-policy --group-name "$GROUP" \
+    --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 run aws iam attach-group-policy --group-name "$GROUP" --policy-arn "$REGION_POLICY_ARN"
 for U in $(aws iam list-users \
             --query "Users[?starts_with(UserName,'user')].UserName" --output text); do
