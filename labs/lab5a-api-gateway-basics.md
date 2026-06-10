@@ -64,12 +64,12 @@
 
 ```bash
 API_ID=$(aws apigateway get-rest-apis \
-    --query "items[?name=='dev-on-aws-$USER_ID'].id" -o text)
+    --query "items[?name=='dev-on-aws-$USER_ID'].id" --output text)
 ITEMS_ID=$(aws apigateway get-resources --rest-api-id $API_ID \
-    --query "items[?path=='/items'].id" -o text)
-ACCT=$(aws sts get-caller-identity --query Account -o text)
+    --query "items[?path=='/items'].id" --output text)
+ACCT=$(aws sts get-caller-identity --query Account --output text)
 LAMBDA_ARN=$(aws lambda get-function --function-name lab4-$USER_ID \
-    --query Configuration.FunctionArn -o text)
+    --query Configuration.FunctionArn --output text)
 
 cat >> ~/.dev-on-aws.env <<EOF
 export API_ID=$API_ID

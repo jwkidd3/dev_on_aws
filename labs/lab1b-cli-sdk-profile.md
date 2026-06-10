@@ -55,7 +55,7 @@ export USER_ID=user1    # *** SET THIS TO YOUR ASSIGNED USER (user2, user3, …)
 EOF
 
 # Capture your account ID once — every other lab uses it
-ACCT=$(aws sts get-caller-identity --query Account -o text)
+ACCT=$(aws sts get-caller-identity --query Account --output text)
 echo "export ACCT=$ACCT" >> ~/.dev-on-aws.env
 
 echo 'source ~/.dev-on-aws.env' >> ~/.bashrc
