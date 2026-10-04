@@ -40,8 +40,10 @@ aws iam put-role-policy \
 
 - Clients created at module scope — outside the handler, so they're reused across warm invocations
 - Reads config from env vars (`ITEMS_TABLE`, `UPLOADS_BUCKET`) — no hard-coded names
-- Writes the object to S3 and records a DynamoDB row with the presigned URL
-- Returns API-Gateway-style JSON (status + body)
+- `request_info()` normalises every way it's invoked — direct, API Gateway REST, HTTP API — into *(method, user, id)*; an **S3 event** just gets logged
+- **POST** writes an object to S3, stores an `ITEM#<id>` row in DynamoDB, and returns a presigned URL; **GET** / **DELETE** read and remove items (used from Lab 6b on)
+- Items are keyed `USER#<user>` — direct invokes pass `user`; behind the Cognito authorizer it becomes the signed-in user's `sub`
+- Returns API-Gateway-style JSON (status, CORS headers, body)
 
 ## Step 3 — Redeploy with New Env Vars (6 min)
 
@@ -63,8 +65,9 @@ aws lambda update-function-configuration \
 aws lambda wait function-updated --function-name lab4-$USER_ID
 
 aws lambda invoke --function-name lab4-$USER_ID \
-    --payload "{\"user\":\"$USER_ID\"}" \
+    --payload "{\"user\":\"$USER_ID\",\"title\":\"first item\",\"price\":5}" \
     --cli-binary-format raw-in-base64-out out.json && cat out.json
+# {"statusCode": 200, ... "body": "{\"pk\": \"USER#user1\", \"sk\": \"ITEM#…\", ... \"url\": \"https://…\"}"}
 ```
 
 ## Step 4 — Add the S3 Trigger (6 min)
@@ -96,8 +99,10 @@ echo "hello trigger" | aws s3 cp - s3://$BUCKET/incoming/test.txt
 aws logs tail /aws/lambda/lab4-$USER_ID --follow
 ```
 
-- Look for a new log stream within ~5 seconds
-- The event payload in the logs includes the S3 object key
+- A log line appears: `S3 ObjectCreated:Put: s3://student-…/incoming/test.txt`
+- ⏱️ A **brand-new** notification configuration can take a few minutes to start delivering. If nothing shows after ~30 s, leave `tail` running, upload again from a second terminal (`echo again | aws s3 cp - s3://$BUCKET/incoming/test2.txt`), and give it a couple of minutes. Once active, triggers fire within seconds.
+- Press **Ctrl-C** to stop following
+- The trigger only fires for `incoming/`; the handler writes to `uploads/` — so it can never trigger itself in a loop
 
 ## Step 6 — Version & Alias (6 min)
 
@@ -120,6 +125,6 @@ aws lambda create-alias \
 ## Success Criteria (3 min)
 
 - ✅ Inline policy `LambdaAppAccess` attached to the role
-- ✅ Direct invoke writes to DDB and returns a working presigned URL
+- ✅ Direct invoke writes an `ITEM#…` row to DDB and returns a working presigned URL
 - ✅ Uploading to `incoming/` auto-triggers the function
 - ✅ Version 1 published, alias `prod` points to it

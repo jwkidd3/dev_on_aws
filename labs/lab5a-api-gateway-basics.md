@@ -13,7 +13,7 @@
 
 ## Prerequisites (3 min)
 
-- Lab 4a or 4b complete — `lab4-$USER_ID` exists
+- Lab 4b complete — `lab4-$USER_ID` runs `handler.handler`
 - AWS Console tab open
 
 > **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 5a` creates-or-reuses the bucket, table, role, and Lambda so this lab has a backend to proxy.
@@ -37,20 +37,21 @@
 
 1. Integration type: **Lambda function**
 2. Toggle **Lambda proxy integration** → ON
-3. Lambda function: `lab4-<your-user>` (the one you created in Lab 4a)
+3. Lambda function: `lab4-<your-user>` — check the name carefully; the dropdown lists **every** student's function in this shared account
 4. **Create method** — accept the "add invoke permission" prompt
 5. You should see the method diagram: Client → Method Request → Lambda → Method Response
 
 ## Step 4 — Test from the Console (5 min)
 
 1. With POST selected → **Test** tab
+2. Request body:
+
 ```json
-{"name":"API Gateway"}
+{"title":"from the console","price":3.5}
 ```
 
-2. Request body:
 3. **Test**
-4. Scroll right — Status 200, body contains your greeting
+4. Status 200; the body holds the new item — `"pk": "USER#anonymous"` (no authorizer yet), an `ITEM#…` key, and a presigned `url`
 5. Logs panel at the bottom shows the full request/response trace — read it
 
 ## Step 5 — Deploy to a Stage (5 min)
@@ -63,24 +64,17 @@
 ## Step 6 — Capture the IDs for Downstream Labs (5 min)
 
 ```bash
-API_ID=$(aws apigateway get-rest-apis \
-    --query "items[?name=='dev-on-aws-$USER_ID'].id" --output text)
-ITEMS_ID=$(aws apigateway get-resources --rest-api-id $API_ID \
-    --query "items[?path=='/items'].id" --output text)
-ACCT=$(aws sts get-caller-identity --query Account --output text)
+API_ID=$(aws apigateway get-rest-apis --output text \
+    --query "items[?name=='dev-on-aws-$USER_ID'].id | [0]")
+ITEMS_ID=$(aws apigateway get-resources --rest-api-id $API_ID --output text \
+    --query "items[?path=='/items'].id | [0]")
 LAMBDA_ARN=$(aws lambda get-function --function-name lab4-$USER_ID \
     --query Configuration.FunctionArn --output text)
-
-cat >> ~/.dev-on-aws.env <<EOF
-export API_ID=$API_ID
-export ITEMS_ID=$ITEMS_ID
-export ACCT=$ACCT
-export LAMBDA_ARN=$LAMBDA_ARN
-EOF
-source ~/.dev-on-aws.env
+for v in API_ID ITEMS_ID LAMBDA_ARN; do echo "export $v=${!v}" >> ~/.dev-on-aws.env; done
+source ~/.dev-on-aws.env && echo "API_ID=$API_ID ITEMS_ID=$ITEMS_ID"
 ```
 
-> Labs 6b / 7a / 7b all reference `$API_ID`, `$ITEMS_ID`, `$ACCT`, `$LAMBDA_ARN`.
+> `| [0]` guarantees a single ID even if a duplicate API name ever exists. Labs 6b / 7a reference `$API_ID`, `$ITEMS_ID`, `$LAMBDA_ARN` (and `$ACCT` from Lab 1b).
 
 ## Step 7 — Call It from Cloud9 (5 min)
 
@@ -92,10 +86,10 @@ source ~/.dev-on-aws.env
 
 curl -i -X POST $URL \
      -H "Content-Type: application/json" \
-     -d '{"name":"Cloud9"}'
+     -d '{"title":"from cloud9","price":1}'
 ```
 
-> Expect HTTP 200 and your Lambda's JSON body.
+> Expect HTTP 200 and the new item as JSON. Anyone with this URL can call it right now — Lab 6b locks it down with Cognito.
 
 ## Success Criteria (3 min)
 
@@ -103,4 +97,4 @@ curl -i -X POST $URL \
 - ✅ POST /items wired to `lab4-$USER_ID` with proxy integration
 - ✅ Console **Test** returns 200 with a full request trace
 - ✅ `dev` stage deployed; invoke URL works from Cloud9 `curl`
-- ✅ `$API_ID`, `$ITEMS_ID`, `$ACCT`, `$LAMBDA_ARN` exported
+- ✅ `$API_ID`, `$ITEMS_ID`, `$LAMBDA_ARN`, `$URL` exported

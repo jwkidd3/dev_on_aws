@@ -1,6 +1,6 @@
 # Developing on AWS
 
-A 3-day, introductory-level, **lab-heavy** workshop for developers who want to build a real serverless web application on AWS using the SDKs, CLI, and the Console. **15 hands-on labs**, each ≤ 45 minutes, build the application piece by piece inside AWS Cloud9.
+A 3-day, introductory-level, **lab-heavy** workshop for developers who want to build a real serverless web application on AWS using the SDKs, CLI, and the Console. **15 hands-on labs**, each ≤ 45 minutes (Lab 7b: 55), build the application piece by piece inside AWS Cloud9.
 
 ## Audience
 
@@ -12,7 +12,7 @@ Software developers, solution architects, and IT professionals with:
 ## Format
 
 - 15 Reveal.js teaching decks — paced for 15–20 min delivery (M1/M15 shorter)
-- **15 Markdown lab guides** (`labs/*.md`) — each ≤ 45 min of keyboard time
+- **15 Markdown lab guides** (`labs/*.md`) — each ≤ 45 min of keyboard time (7b: 55)
 - **~71% lab / ~29% lecture** by schedule clock
 - **Every lab runs inside AWS Cloud9** — no local install on student laptops
 - For each major service, the **first sub-lab is Console-driven**; follow-ups use the SDK/CLI
@@ -92,13 +92,13 @@ Which labs each teaching module sets up. Modules without labs are pure concept /
 | 14 | Observing Your Application              | **7a**             | 3 |
 | 15 | Course Wrap-up                          | —                  | 3 |
 
-Labs 7a and 7b are done back-to-back on Day 3: **7a** (X-Ray instrumentation, paired with M14) deposits the instrumented handler that **7b** (SAM deploy, paired with M13) then deploys via CloudFormation.
+Labs 7a and 7b are done back-to-back on Day 3: **7a** (X-Ray instrumentation, paired with M14) copies the instrumented handler `labs/files/lab7/python/handler.py` into the hand-built `lab4-userN` function; **7b** (SAM deploy, paired with M13) deploys that same file as a fresh HTTP API + Lambda + table stack via CloudFormation.
 
 ## Console vs. SDK Labs
 
 | Service     | Console lab | SDK / CLI lab(s)                                 |
 | ----------- | ----------- | ------------------------------------------------ |
-| IAM         | Lab 1a, 1c  | Lab 1b (SDK smoke)                               |
+| IAM         | Lab 1a      | Lab 1b (SDK smoke), Lab 1c (role + policy, CLI)  |
 | S3          | **Lab 2a**  | Lab 2b (SDK + presigned)                         |
 | DynamoDB    | **Lab 3a**  | Lab 3b (Query, GSI, conditional update)          |
 | Lambda      | **Lab 4a**  | Lab 4b (SDK + S3 triggers)                       |
@@ -192,17 +192,17 @@ vars to `~/.dev-on-aws.env`:
 ```
 1a  (REQUIRED — Cloud9 + LabRole + repo clone)
  ↓
-1b → 1c            bootstrap.sh 1b → env vars
+1b → 1c            export USER_ID=userN; bootstrap.sh 1b → env vars
  ↓
-2a → 2b            bootstrap.sh 2a|2b → env vars
+2a → 2b            bootstrap.sh 2a → env vars · 2b → + uploads bucket
  ↓
-3a → 3b            bootstrap.sh 3a|3b → env vars
+3a → 3b            bootstrap.sh 3a → env vars · 3b → + Items table
  ↓
 4a → 4b            bootstrap.sh 4a|4b → bucket + table (+ role, fn for 4b)
  ↓
 5a                 bootstrap.sh 5a    → + Lambda role/function
  ↓
-6a → 6b → 6c       bootstrap.sh 6a|6b|6c → + API + Cognito (+ site for 6c)
+6a → 6b → 6c       bootstrap.sh 6a|6b|6c → + API + Cognito pool/client/alice (+ site for 6c)
  ↓
 7a → 7b            bootstrap.sh 7a|7b → full stack through Cognito
 ```
@@ -229,11 +229,13 @@ dev_on_aws/
 │   └── … 14 more …
 └── labs/files/              ← source files students clone via GitHub in Lab 1a
     ├── bootstrap.sh          ← "catch me up" setup for any lab
-    ├── lab1/  (smoke_test.py)
+    ├── refresh-token.sh      ← `source` it to re-mint the 60-min Cognito ID token (Labs 6c–7b)
+    ├── cleanup.sh            ← end of class: delete only YOUR userN resources (dry run by default)
+    ├── lab1/  (smoke_test.py, trust-policy.json, s3-create-only.json)
     ├── lab2/  (seed.py, process.py, make_get_url.py, make_put_url.py, waiter_demo.py)
-    ├── lab3/  (seed.py, bulk_load.py, query_filter.py, query_gsi.py, update_conditional.py, scan_demo.py)
+    ├── lab3/  (seed.py → items.json, bulk_load.py, get_item_client.py, query_filter.py, query_gsi.py, update_conditional.py, scan_demo.py)
     ├── lab4/  (handler.py, lambda-perms.json, notify.json)
-    ├── lab6/  (swagger.json, site-policy.json, web/*.html)
+    ├── lab6/  (swagger.json, site-policy.json, decode_jwt.py, web/index.html — Cognito + API frontend)
     └── lab7/  (template.yaml, python/handler.py, python/requirements.txt)
 ```
 

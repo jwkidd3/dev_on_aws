@@ -14,6 +14,9 @@ LAB="${1:-}"
 
 REGION=us-east-1
 ENV=~/.dev-on-aws.env
+# 25 students share one account, so control-plane APIs (API Gateway especially)
+# get throttled when everyone bootstraps at once — retry harder than the default.
+export AWS_RETRY_MODE="${AWS_RETRY_MODE:-adaptive}" AWS_MAX_ATTEMPTS="${AWS_MAX_ATTEMPTS:-10}"
 FILES=$(cd "$(dirname "$0")" && pwd)   # where lab1/ lab3/ lab4/ etc live
 
 say()  { printf "  \033[34m→\033[0m  %s\n" "$*"; }
@@ -35,20 +38,18 @@ putenv() {   # putenv KEY=VALUE — upsert into $ENV
 #── env ────────────────────────────────────────────────────────────────
 ensure_env() {
   say "ensure_env"
+  # USER_ID can't be derived from the caller: in Cloud9 every student's SDK
+  # runs as the same shared LabRole, so 25 students would collide on identical
+  # resource names (Items-LabRole, lab4-LabRole, …). Take it from the shell or
+  # from the session file Lab 1b writes; otherwise demand it.
   if [ -z "${USER_ID:-}" ]; then
-    local ARN
-    ARN=$(aws sts get-caller-identity --query Arn --output text)
-    USER_ID=$(echo "$ARN" | sed -nE 's|.*:(user|assumed-role)/([^/]+).*|\2|p')
-    [ -z "$USER_ID" ] && die "could not derive USER_ID from $ARN"
+    USER_ID=$(sed -nE 's/^export USER_ID=([^[:space:]#]+).*/\1/p' "$ENV" | tail -1)
   fi
-  # In Cloud9 the SDK runs as the shared LabRole, so an auto-derived USER_ID
-  # is "LabRole" for EVERY student — 25 students would collide on identical
-  # resource names (Items-LabRole, lab4-LabRole, …). Refuse it and demand the
-  # per-student value. Students set this in Lab 1b: export USER_ID=user1.
   if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "LabRole" ]; then
-    die "USER_ID resolved to '${USER_ID:-empty}' (the shared role). Every student would collide on the same resource names. Set your assigned user first, then re-run:  export USER_ID=user1"
+    die "USER_ID is '${USER_ID:-empty}'. The whole class shares one account, so set your assigned user first, then re-run:  export USER_ID=user1"
   fi
   ACCT=$(aws sts get-caller-identity --query Account --output text)
+  putenv "AWS_REGION=$REGION"
   putenv "USER_ID=$USER_ID"
   putenv "ACCT=$ACCT"
   export USER_ID ACCT
@@ -60,7 +61,7 @@ ensure_bucket() {
   say "ensure_bucket"
   local B=""
   # 1. env-provided takes priority
-  if [ -n "${BUCKET:-}" ] && aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+  if [ -n "${BUCKET:-}" ] && aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1; then
     B="$BUCKET"; skip "s3://$B (from env)"
   else
     # 2. discover any student-$USER_ID-uploads* the student created earlier
@@ -78,7 +79,7 @@ ensure_bucket() {
         --versioning-configuration Status=Enabled \
         || die "put-bucket-versioning on $B failed"
       # Sanity-check the bucket is actually reachable before we claim success
-      aws s3api head-bucket --bucket "$B" 2>/dev/null \
+      aws s3api head-bucket --bucket "$B" >/dev/null 2>&1 \
         || die "head-bucket check on freshly created $B failed"
       ok "s3://$B (created)"
     else
@@ -123,8 +124,8 @@ ensure_lambda() {
   local R="StudentLambdaRole-$USER_ID"
   local F="lab4-$USER_ID"
 
+  local TMP; TMP=$(mktemp -d)
   if ! aws iam get-role --role-name "$R" >/dev/null 2>&1; then
-    local TMP; TMP=$(mktemp -d)
     cat > "$TMP/trust.json" <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow",
  "Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}
@@ -133,8 +134,13 @@ EOF
         --assume-role-policy-document "file://$TMP/trust.json" >/dev/null
     aws iam attach-role-policy --role-name "$R" \
         --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    ok "role $R"
+  else
+    skip "role $R"
+  fi
 
-    cat > "$TMP/perms.json" <<EOF
+  # Inline app policy (Lab 4b Step 1) — always re-applied; put-role-policy is idempotent
+  cat > "$TMP/perms.json" <<EOF
 {"Version":"2012-10-17","Statement":[
  {"Effect":"Allow",
   "Action":["dynamodb:PutItem","dynamodb:GetItem","dynamodb:Query",
@@ -144,28 +150,27 @@ EOF
   "Action":["s3:GetObject","s3:PutObject"],
   "Resource":"arn:aws:s3:::$BUCKET/*"}]}
 EOF
-    aws iam put-role-policy --role-name "$R" \
-        --policy-name LambdaAppAccess \
-        --policy-document "file://$TMP/perms.json"
-    rm -rf "$TMP"
-    ok "role $R"
-  else
-    skip "role $R"
-  fi
+  aws iam put-role-policy --role-name "$R" \
+      --policy-name LambdaAppAccess \
+      --policy-document "file://$TMP/perms.json"
+  rm -rf "$TMP"
+  # Console-created roles (Lab 4a) live under /service-role/ — use the real ARN
+  local ROLE_ARN
+  ROLE_ARN=$(aws iam get-role --role-name "$R" --query Role.Arn --output text)
+
+  local SRC="$FILES/lab4/handler.py"
+  [ -f "$SRC" ] || die "missing $SRC — did you clone the course repo?"
+  local Z; Z=$(mktemp -d)/function.zip
+  (cd "$(dirname "$SRC")" && zip -q "$Z" handler.py)
 
   if ! aws lambda get-function --function-name "$F" >/dev/null 2>&1; then
-    local SRC="$FILES/lab4/handler.py"
-    [ -f "$SRC" ] || die "missing $SRC — did you clone the course repo?"
-    local Z; Z=$(mktemp -d)/function.zip
-    (cd "$(dirname "$SRC")" && zip -q "$Z" handler.py)
-
     # IAM propagation — retry with backoff
     local created=0
     for delay in 5 10 15 20 25; do
       sleep "$delay"
       if aws lambda create-function --function-name "$F" \
             --runtime python3.12 --architectures arm64 \
-            --role "arn:aws:iam::$ACCT:role/$R" --handler handler.handler \
+            --role "$ROLE_ARN" --handler handler.handler \
             --zip-file "fileb://$Z" --timeout 10 --memory-size 256 \
             --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}" \
             >/dev/null 2>&1; then
@@ -176,6 +181,17 @@ EOF
     aws lambda wait function-active-v2 --function-name "$F" 2>/dev/null \
       || aws lambda wait function-active --function-name "$F"
     ok "function $F"
+  elif [ "$(aws lambda get-function-configuration --function-name "$F" \
+            --query Handler --output text)" != "handler.handler" ]; then
+    # A Lab 4a console function that never got Lab 4b's code — bring it up to date
+    aws lambda update-function-code --function-name "$F" \
+        --zip-file "fileb://$Z" >/dev/null
+    aws lambda wait function-updated --function-name "$F"
+    aws lambda update-function-configuration --function-name "$F" \
+        --handler handler.handler \
+        --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}" >/dev/null
+    aws lambda wait function-updated --function-name "$F"
+    ok "function $F (upgraded to the Lab 4b handler)"
   else
     skip "function $F"
   fi
@@ -230,8 +246,11 @@ ensure_api() {
 }
 
 #── Cognito pool + client + user + fresh ID token (Lab 6a/6b) ─────────
-# Names MUST match Lab 6a's canonical convention — Lab 6a Step 3 queries
-# with Name=='dev-on-aws-$USER_ID' and ClientName=='web'.
+# MUST match what Lab 6a builds in the Console, so students can mix the two:
+#   pool    dev-on-aws-$USER_ID, sign-in with Email (--username-attributes email)
+#   client  "web", public, USER_PASSWORD_AUTH + REFRESH_TOKEN_AUTH
+#   user    alice@example.com / Tr0picalStorm! (permanent)
+# Every student has their own pool, so each pool can hold its own "alice".
 ensure_cognito() {
   say "ensure_cognito"
   local PNAME="dev-on-aws-$USER_ID"
@@ -240,8 +259,8 @@ ensure_cognito() {
         --query "UserPools[?Name=='$PNAME'].Id | [0]" --output text)
   if [ -z "$PID" ] || [ "$PID" = "None" ]; then
     PID=$(aws cognito-idp create-user-pool --pool-name "$PNAME" \
+          --username-attributes email \
           --auto-verified-attributes email \
-          --policies 'PasswordPolicy={MinimumLength=8,RequireUppercase=false,RequireLowercase=false,RequireNumbers=false,RequireSymbols=false}' \
           --query UserPool.Id --output text)
     ok "pool $PNAME ($PID)"
   else skip "pool $PNAME ($PID)"; fi
@@ -254,29 +273,36 @@ ensure_cognito() {
   if [ -z "$CID" ] || [ "$CID" = "None" ]; then
     CID=$(aws cognito-idp create-user-pool-client --user-pool-id "$PID" \
           --client-name "$CNAME" \
-          --explicit-auth-flows ALLOW_ADMIN_USER_PASSWORD_AUTH ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+          --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH \
           --query UserPoolClient.ClientId --output text)
     ok "client $CNAME ($CID)"
-  else skip "client $CNAME ($CID)"; fi
+  else
+    # A console-built client may be missing the password flow — make sure it's on
+    aws cognito-idp update-user-pool-client --user-pool-id "$PID" --client-id "$CID" \
+        --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH >/dev/null
+    skip "client $CNAME ($CID)"
+  fi
 
   aws cognito-idp admin-create-user --user-pool-id "$PID" \
-      --username "student-$USER_ID" \
-      --user-attributes Name=email,Value="student-$USER_ID@example.com" Name=email_verified,Value=true \
+      --username alice@example.com \
+      --user-attributes Name=email,Value=alice@example.com Name=email_verified,Value=true \
       --message-action SUPPRESS >/dev/null 2>&1 || true
   aws cognito-idp admin-set-user-password --user-pool-id "$PID" \
-      --username "student-$USER_ID" --password "Passw0rd!LabRun" \
-      --permanent >/dev/null 2>&1 || true
-
-  local TOKEN
-  TOKEN=$(aws cognito-idp admin-initiate-auth --user-pool-id "$PID" \
-          --client-id "$CID" --auth-flow ADMIN_USER_PASSWORD_AUTH \
-          --auth-parameters "USERNAME=student-$USER_ID,PASSWORD=Passw0rd!LabRun" \
-          --query AuthenticationResult.IdToken --output text)
+      --username alice@example.com --password 'Tr0picalStorm!' \
+      --permanent >/dev/null
   putenv "POOL_ID=$PID"
   putenv "CLIENT_ID=$CID"
+  export POOL_ID="$PID" CLIENT_ID="$CID"
+
+  local TOKEN
+  TOKEN=$(aws cognito-idp initiate-auth --client-id "$CID" \
+          --auth-flow USER_PASSWORD_AUTH \
+          --auth-parameters 'USERNAME=alice@example.com,PASSWORD=Tr0picalStorm!' \
+          --query AuthenticationResult.IdToken --output text) \
+    || die "sign-in as alice@example.com failed — was the pool created with Email sign-in?"
   putenv "ID_TOKEN=$TOKEN"
-  export POOL_ID="$PID" CLIENT_ID="$CID" ID_TOKEN="$TOKEN"
-  ok "ID_TOKEN captured"
+  export ID_TOKEN="$TOKEN"
+  ok "ID_TOKEN for alice@example.com (valid 60 min — refresh: source refresh-token.sh)"
 }
 
 #── Swagger import — Lab 6b's end state (full API as code) ────────────
@@ -307,16 +333,19 @@ ensure_api_import() {
         --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
         --source-arn "arn:aws:execute-api:$REGION:$ACCT:$API_ID/*" \
         >/dev/null 2>&1 || true
-    aws apigateway create-deployment --rest-api-id "$API_ID" --stage-name dev >/dev/null
     ok "swagger import (POST/GET /items, GET/DELETE /items/{id}, CORS, validator)"
   fi
+  # Always (re)deploy — cheap, and repairs a run that imported but was
+  # throttled before its deployment landed.
+  aws apigateway create-deployment --rest-api-id "$API_ID" --stage-name dev >/dev/null
+  ok "stage dev deployed"
 }
 
 #── Static-site bucket (Lab 6c) ───────────────────────────────────────
 ensure_site() {
   say "ensure_site"
   local S=""
-  if [ -n "${SITE:-}" ] && aws s3api head-bucket --bucket "$SITE" 2>/dev/null; then
+  if [ -n "${SITE:-}" ] && aws s3api head-bucket --bucket "$SITE" >/dev/null 2>&1; then
     S="$SITE"; skip "s3://$S (from env)"
   else
     S=$(aws s3api list-buckets \
@@ -341,8 +370,9 @@ ensure_site() {
 #── Dispatch ──────────────────────────────────────────────────────────
 case "$LAB" in
   1b|1c)          ensure_env ;;
-  2a|2b)          ensure_env ;;
-  3a|3b)          ensure_env ;;
+  2a|3a)          ensure_env ;;
+  2b)             ensure_env; ensure_bucket ;;
+  3b)             ensure_env; ensure_table ;;
   4a)             ensure_env; ensure_bucket; ensure_table ;;
   4b|5a)          ensure_env; ensure_bucket; ensure_table; ensure_lambda ;;
   6a)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api ;;

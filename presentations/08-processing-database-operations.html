@@ -64,7 +64,7 @@ table.update_item(
   <h2>Query &amp; Scan</h2>
   <ul>
     <li><strong>Query</strong> — uses the primary key (required); efficient. Use this.</li>
-    <li><strong>Scan</strong> — reads every item and filters client-side. Avoid.</li>
+    <li><strong>Scan</strong> — reads every item, then applies the filter. Avoid.</li>
     <li>Both paginate — check <code>LastEvaluatedKey</code></li>
     <li>Filter expressions reduce the response, not the read cost</li>
   </ul>
@@ -102,6 +102,17 @@ WHERE pk = 'USER#user1'
 </section>
 
 <section>
+  <h2>Caching: DAX &amp; Friends</h2>
+  <ul>
+    <li><strong>DynamoDB Accelerator (DAX)</strong> — in-memory, write-through cache in front of a table; reads drop from milliseconds to microseconds</li>
+    <li>API-compatible: swap the client for the DAX client, keep the same <code>GetItem</code> / <code>Query</code> calls</li>
+    <li>Helps read-heavy, repeated-key traffic (hot items, leaderboards); doesn't help write-heavy or strongly-consistent reads (those bypass the cache)</li>
+    <li>Alternatives: <strong>ElastiCache</strong> for computed/aggregated results; an in-Lambda module-scope dict for tiny, static lookups</li>
+  </ul>
+  <p class="small">Runs inside your VPC as a cluster — so it's a cost and networking decision, not a default.</p>
+</section>
+
+<section>
   <h2>Best Practices</h2>
   <ul>
     <li>List access patterns first; design key schema second</li>
@@ -117,7 +128,7 @@ WHERE pk = 'USER#user1'
   <h2>🗄️ Labs 3a · 3b</h2>
   <ul>
     <li><strong>3a — DynamoDB in the Console.</strong> Item editor (form + JSON), Query vs. Scan, PartiQL.</li>
-    <li><strong>3b — DynamoDB via SDK.</strong> Bulk load, filtered Query, GSI, conditional update.</li>
+    <li><strong>3b — DynamoDB via SDK.</strong> Load from a JSON file, client vs. resource API, filtered Query, GSI, conditional update.</li>
   </ul>
   <p class="small"><code>labs/lab3a-*.md · lab3b-*.md</code></p>
 </section>

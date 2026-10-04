@@ -74,16 +74,12 @@ cp -r dev_on_aws/labs/files ./dev-on-aws
 
 # Verify — raise your hand if any line shows MISS
 cd ~/environment/dev-on-aws
-for f in lab1/smoke_test.py lab2/seed.py lab2/process.py \
-         lab2/make_get_url.py lab2/make_put_url.py lab2/waiter_demo.py \
-         lab3/seed.py lab3/bulk_load.py lab3/query_filter.py \
-         lab3/query_gsi.py lab3/update_conditional.py lab3/scan_demo.py \
-         lab4/handler.py lab4/lambda-perms.json \
-         lab6/swagger.json lab7/python/handler.py \
-         lab7/template.yaml bootstrap.sh; do
+ls lab1 lab2 lab3 lab4 lab6 lab6/web lab7 lab7/python
+for f in bootstrap.sh refresh-token.sh lab1/smoke_test.py lab4/handler.py \
+         lab6/swagger.json lab6/web/index.html lab7/template.yaml; do
   [ -f "$f" ] && echo "OK   $f" || echo "MISS $f"
 done
-chmod +x ~/environment/dev-on-aws/bootstrap.sh
+chmod +x bootstrap.sh
 ```
 
 > `bootstrap.sh` is the "catch me up" script — if you ever fall behind, `bash ~/environment/dev-on-aws/bootstrap.sh <labId>` creates-or-reuses every resource that lab needs. Each subsequent lab has a reminder.
@@ -93,9 +89,10 @@ chmod +x ~/environment/dev-on-aws/bootstrap.sh
 - ✅ Cloud9 `dev-on-aws-userN` created on **m5.large** with **SSH**
 - ✅ Underlying EC2 instance has `LabRole` attached and AMTC is off
 - ✅ `aws sts get-caller-identity` returns an `assumed-role/LabRole/…` ARN
-- ✅ All 7 verify lines show `OK`
+- ✅ Every folder listed and all 7 spot-check lines show `OK`
 
 > Class conventions — shown now, enforced in later labs:
 
-- **Resource prefix:** everything you create starts with your user — `student-user1-*`, `Items-user1`, `lab4-user1`. IAM enforces this; off-prefix actions return `AccessDenied`.
+- **One shared account:** the whole class works in the same AWS account and region. Everything you create carries your user — `student-user1-*`, `Items-user1`, `lab4-user1` — so 25 people never collide on a name.
+- **The prefix is a convention, not a wall:** you're an administrator, so IAM will *not* stop you touching someone else's resources. Only ever modify or delete names that contain **your** user.
 - **Editor vs. terminal:** source/config files are authored in the Cloud9 editor; commands ≤ ~5 lines go into the terminal.

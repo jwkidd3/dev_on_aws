@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateAndListInMyPrefix",
+      "Effect": "Allow",
+      "Action": ["s3:CreateBucket", "s3:ListBucket"],
+      "Resource": "arn:aws:s3:::student-USER-*"
+    },
+    {
+      "Sid": "SeeBucketList",
+      "Effect": "Allow",
+      "Action": "s3:ListAllMyBuckets",
+      "Resource": "*"
+    }
+  ]
+}

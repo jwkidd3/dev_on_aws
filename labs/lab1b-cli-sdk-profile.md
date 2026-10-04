@@ -12,7 +12,7 @@
 
 - Lab 1a complete — Cloud9 open, `~/environment/dev-on-aws/lab1` folder exists
 
-> **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 1b` derives `$USER_ID` from your caller identity and exports it to `~/.dev-on-aws.env`.
+> **Starting fresh?** Set your user first — `export USER_ID=user1` (your own number) — then `bash ~/environment/dev-on-aws/bootstrap.sh 1b` writes it and `$ACCT` to `~/.dev-on-aws.env`. Your user can't be derived automatically: every student's Cloud9 runs as the same `LabRole`.
 
 ## Step 1 — Review smoke_test.py (7 min)
 
@@ -31,7 +31,7 @@ cd ~/environment/dev-on-aws/lab1
 python3 smoke_test.py
 ```
 
-> Expected output: your IAM user ARN plus the names of any buckets the account owns.
+> Expected output: `arn:aws:sts::…:assumed-role/LabRole/i-…` — the **instance role**, not your `userN` login — plus every bucket in the account. You'll see other students' buckets too: the whole class shares this one account.
 
 ## Step 3 — CLI Smoke Tests (5 min)
 
@@ -41,10 +41,10 @@ aws dynamodb list-tables
 aws lambda list-functions
 ```
 
-- Lists should return (most will be empty — you haven't created anything yet).
-- Some calls may fail with `AccessDenied` — you'll test denies in Lab 1c.
+- Every list succeeds. Expect to see other students' resources appear over the course — it's one shared account.
+- Nothing here is denied: `LabRole` is broad on purpose. You'll build a deliberately narrow identity and hit real denials in Lab 1c.
 
-## Step 4 — Create the Session File (7 min)
+## Step 4 — Create the Session File (5 min)
 
 > Every lab after this one saves variables to `~/.dev-on-aws.env`. Set it up once — in the Cloud9 terminal:
 
@@ -69,7 +69,7 @@ echo "You are $USER_ID in $AWS_REGION (account $ACCT)"
 
 ## Success Criteria (2 min)
 
-- ✅ SDK program runs from Cloud9 and prints your IAM user ARN
+- ✅ SDK program runs from Cloud9 and prints the `assumed-role/LabRole/…` ARN
 - ✅ CLI lists S3, DynamoDB, Lambda successfully (mostly empty)
 - ✅ `~/.dev-on-aws.env` created and auto-sourced from `.bashrc`
 - ✅ `$USER_ID` is set to your assigned user

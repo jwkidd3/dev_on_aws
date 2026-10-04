@@ -12,16 +12,18 @@ prefix so it never collides with student work. Coverage:
 
 | Lab | Operations exercised |
 |---|---|
-| bootstrap | `labs/files/bootstrap.sh` against **all 13 labIds** (`1b 2a 2b 3a 3b 4a 4b 5a 6a 6b 6c 7a 7b`) under one synthetic USER_ID — exercises every `ensure_*` function; verifies bucket, table, role, function, API, Cognito pool, site bucket exist; re-runs `6c` and asserts ≥5 "already present" skips for idempotency |
-| 1b  | `pip3 install --user boto3`; `sts:GetCallerIdentity` from Python |
-| 1c  | `s3:CreateBucket` / `DeleteBucket` round-trip in the student prefix |
-| 2a/2b | S3 bucket create, versioning, object PUT with metadata, HEAD, presigned GET, presigned PUT |
-| 3a/3b | DynamoDB `CreateTable` with `byCategory` GSI, `batch_writer` put, `Query`, conditional `UpdateItem`, GSI `Query` |
-| 4a/4b | IAM role + trust doc, basic execution policy attach, inline policy for DDB + S3, `create-function` (Python 3.12 / arm64), `invoke`, tracing on, X-Ray daemon policy, `publish-version`, `create-alias` |
-| 5a  | REST API, `/items` resource, POST method, Lambda proxy integration, `add-permission`, stage deployment |
-| 6a  | Cognito user pool + SPA app client, admin-create-user, permanent password, `initiate-auth` returns JWT |
-| 6b  | Cognito authorizer on the Lab 5a API; Swagger overwrite import of the real `labs/files/lab6/swagger.json` — verifies `/items/{id}` exists, OPTIONS (CORS mock) present, POST is Cognito-protected, request validator created, wildcard `add-permission`, stage redeploy |
-| 7b  | `sam build`, `sam deploy` using the real `labs/files/lab7/template.yaml` + `handler.py` |
+| bootstrap | `labs/files/bootstrap.sh` against **all 13 labIds** under one synthetic USER_ID; verifies bucket, table, role, function, API, Cognito pool, site bucket; ≥5 "already present" skips on re-run; bootstrap's `alice` token passes the imported API; `refresh-token.sh` re-mints the token; refuses to run without `USER_ID`; **`cleanup.sh`** dry-run lists and `--delete` removes every bootstrap resource |
+| 1b  | `pip3 install --user boto3` (or boto3 already importable); `sts:GetCallerIdentity` from Python |
+| 1c  | Real `lab1/*.json` rendered; `Lab1cRole-<id>` assumed: bucket create allowed, delete **AccessDenied**, then allowed after `AllowBucketDelete`, delete outside `student-<id>-*` still **AccessDenied** |
+| 2a/2b | Versioned bucket, metadata, delete-marker undelete; real `lab2/` scripts: `seed.py`, `process.py`, presigned GET (body check) + presigned PUT via `curl`, `waiter_demo.py` |
+| 3a/3b | Table + `byCategory` GSI; real `lab3/` scripts: `seed.py` → `items.json`, `bulk_load.py`, `get_item_client.py`, `query_filter.py`, `query_gsi.py`, `update_conditional.py` (2nd run rejected), `scan_demo.py` |
+| 4a/4b | Role + rendered `lambda-perms.json`; **real `lab4/handler.py`** (Python 3.12 / arm64) invoke → `ITEM#` row + working presigned URL; S3 trigger via rendered `notify.json` fires on `incoming/`; tracing, X-Ray policy, version, alias |
+| 5a  | REST API, `/items` POST, Lambda proxy, permission, stage; unauthenticated `curl` POST → 200 |
+| 6a  | Cognito pool (email sign-in) + public client + user, `initiate-auth` returns JWT |
+| 6b  | Authorizer; Swagger overwrite import of the real `swagger.json`; no/bad token → 401 (with CORS header from gateway responses); POST → id, GET one, DELETE, GET → 404; missing `price` → 400; OPTIONS preflight; second user sees none of the first user's items; `decode_jwt.py` |
+| 6c  | Site bucket + public policy + real `web/` + generated `config.js` served over the website endpoint; browser-style Cognito `InitiateAuth` returns a token with CORS |
+| 7a  | `aws-xray-sdk` + `wrapt` packaged for **arm64 / Python 3.12** with `pip --platform`; instrumented handler deployed and called through the API; **annotation filter** (`annotation.user` + `annotation.method`) finds the traces |
+| 7b  | `sam build` + `sam deploy` of the real `template.yaml`; HTTP API: no token → 401, POST/GET/DELETE `/items[/{id}]` with the JWT, CORS preflight |
 
 What it does **not** test (requires a browser):
 - Cloud9 environment creation wizard
@@ -37,7 +39,7 @@ From a Cloud9 terminal, after cloning this repo:
 cd ~/environment/dev_on_aws/validation
 chmod +x run.sh
 
-./run.sh                    # full run (~6 min, creates ~20 resources)
+./run.sh                    # full run (~15 min, creates ~30 resources)
 ./run.sh --skip-sam         # skip Lab 7b (sam build + deploy; needs Docker)
 ./run.sh --skip-bootstrap   # skip the bootstrap.sh idempotency check
 ./run.sh --quick            # skip SAM + Cognito + API Gateway authorizer + bootstrap

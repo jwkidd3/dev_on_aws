@@ -37,7 +37,7 @@ ls ~/environment/dev-on-aws/lab3/
 
 > If check 1 shows `user/user1` or an AMTC session, redo Lab 1a Step 4. If check 2 shows blanks, `source ~/.dev-on-aws.env`. If check 3 is missing, re-clone per Lab 1a Step 6.
 
-## Step 1 — Create the Table (4 min)
+## Step 1 — Create the Table (5 min)
 
 1. Console search: **DynamoDB** → **Tables** → **Create table**
 2. Table name: `Items-user1` (replace with your user)
@@ -56,20 +56,16 @@ ls ~/environment/dev-on-aws/lab3/
 4. Add: `category` (String, `widgets`), `price` (Number, `19.95`), `inStock` (Boolean, true)
 5. **Create item**
 
-## Step 3 — Add an Item (JSON) (5 min)
+## Step 3 — Add an Item (JSON) (8 min)
 
-1. **Create item** → toggle **JSON view**
-2. Paste the JSON on the next slide
+1. **Create item** → toggle **JSON view** (turn **View DynamoDB JSON** on)
+2. Paste the JSON below — **replace `user1` with your user id first**; the Console does not expand shell variables
 3. **Create item**
 4. Click the new `ITEM#002` row to confirm the typed attributes (`S`, `N`, `BOOL`, `SS`)
 
-## Step 3 — JSON Payload (5 min)
-
-> **Replace `$USER_ID` with your actual user id before pasting** — the DynamoDB Console does not expand shell variables. Example: `USER#user1`.
-
 ```json
 {
-  "pk":       { "S": "USER#$USER_ID" },
+  "pk":       { "S": "USER#user1" },
   "sk":       { "S": "ITEM#002" },
   "title":    { "S": "Red gadget" },
   "category": { "S": "gadgets" },
@@ -79,7 +75,7 @@ ls ~/environment/dev-on-aws/lab3/
 }
 ```
 
-## Step 4 — Run a Query (5 min)
+## Step 4 — Run a Query (4 min)
 
 1. Explore view → switch from *Scan* to **Query**
 2. Partition key: `pk = USER#<your-user-id>` (e.g., `USER#user1`)
@@ -87,7 +83,7 @@ ls ~/environment/dev-on-aws/lab3/
 4. **Run**
 5. Scroll right — the returned *Read capacity units* tells you what the query cost
 
-## Step 5 — Scan + Filter (5 min)
+## Step 5 — Scan + Filter (4 min)
 
 1. Switch to **Scan**
 2. Add filter: `category = widgets`
@@ -95,23 +91,27 @@ ls ~/environment/dev-on-aws/lab3/
 4. Note the time taken and RCU used compared to the Query
 5. This is the "scan cost" lesson you'll remember every time you design a table
 
-## Step 6 — PartiQL in the Console (5 min)
+## Step 6 — PartiQL in the Console (7 min)
 
 1. Left nav → **PartiQL editor**
-2. Paste the statement on the next slide and **Run**
-3. Try an UPDATE to change ITEM#001's price to 17.50
-4. Re-query to see the change
+2. Paste the SELECT below — **replace `user1` in both places** with your user id — and **Run**
 
-## Step 6 — PartiQL Statement (5 min)
-
-> **Replace both `$USER_ID` tokens with your actual user id** — the PartiQL editor does not expand shell vars. Example: `"Items-user1"` and `'USER#user1'`.
-
-```bash
+```sql
 SELECT sk, title, price
-FROM   "Items-$USER_ID"
-WHERE  pk = 'USER#$USER_ID'
+FROM   "Items-user1"
+WHERE  pk = 'USER#user1'
   AND  begins_with(sk, 'ITEM#')
 ```
+
+3. Run an UPDATE to change ITEM#001's price to 17.50 (again, your user id):
+
+```sql
+UPDATE "Items-user1"
+SET    price = 17.50
+WHERE  pk = 'USER#user1' AND sk = 'ITEM#001'
+```
+
+4. Re-run the SELECT — ITEM#001 now shows `17.5`
 
 ## Success Criteria (2 min)
 

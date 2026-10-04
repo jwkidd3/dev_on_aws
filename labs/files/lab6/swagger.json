@@ -5,7 +5,9 @@
     "description": "Items API — full definition as code. Imported over the hand-built Lab 5a API in Lab 6b.",
     "version": "1.0"
   },
-  "schemes": ["https"],
+  "schemes": [
+    "https"
+  ],
   "securityDefinitions": {
     "CognitoAuth": {
       "type": "apiKey",
@@ -26,22 +28,54 @@
       "validateRequestParameters": false
     }
   },
+  "x-amazon-apigateway-gateway-responses": {
+    "DEFAULT_4XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'",
+        "gatewayresponse.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
+      }
+    },
+    "DEFAULT_5XX": {
+      "responseParameters": {
+        "gatewayresponse.header.Access-Control-Allow-Origin": "'*'",
+        "gatewayresponse.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
+      }
+    }
+  },
   "definitions": {
     "NewItem": {
       "type": "object",
-      "required": ["title", "price"],
+      "required": [
+        "title",
+        "price"
+      ],
       "properties": {
-        "user":  { "type": "string" },
-        "title": { "type": "string", "minLength": 1 },
-        "price": { "type": "number" }
+        "user": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "price": {
+          "type": "number"
+        }
       }
     }
   },
   "paths": {
     "/items": {
       "get": {
-        "security": [{ "CognitoAuth": [] }],
-        "responses": { "200": { "description": "List items" } },
+        "security": [
+          {
+            "CognitoAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List items"
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "aws_proxy",
           "httpMethod": "POST",
@@ -50,18 +84,30 @@
         }
       },
       "post": {
-        "consumes": ["application/json"],
-        "security": [{ "CognitoAuth": [] }],
+        "consumes": [
+          "application/json"
+        ],
+        "security": [
+          {
+            "CognitoAuth": []
+          }
+        ],
         "x-amazon-apigateway-request-validator": "validate-body",
         "parameters": [
           {
             "in": "body",
             "name": "NewItem",
             "required": true,
-            "schema": { "$ref": "#/definitions/NewItem" }
+            "schema": {
+              "$ref": "#/definitions/NewItem"
+            }
           }
         ],
-        "responses": { "200": { "description": "Create item" } },
+        "responses": {
+          "200": {
+            "description": "Create item"
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "aws_proxy",
           "httpMethod": "POST",
@@ -74,20 +120,28 @@
           "200": {
             "description": "CORS preflight",
             "headers": {
-              "Access-Control-Allow-Origin":  { "type": "string" },
-              "Access-Control-Allow-Methods": { "type": "string" },
-              "Access-Control-Allow-Headers": { "type": "string" }
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              }
             }
           }
         },
         "x-amazon-apigateway-integration": {
           "type": "mock",
-          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "requestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
           "responses": {
             "default": {
               "statusCode": "200",
               "responseParameters": {
-                "method.response.header.Access-Control-Allow-Origin":  "'*'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
                 "method.response.header.Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
                 "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
               }
@@ -98,11 +152,24 @@
     },
     "/items/{id}": {
       "get": {
-        "security": [{ "CognitoAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "type": "string" }
+        "security": [
+          {
+            "CognitoAuth": []
+          }
         ],
-        "responses": { "200": { "description": "Get one item" } },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get one item"
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "aws_proxy",
           "httpMethod": "POST",
@@ -111,11 +178,24 @@
         }
       },
       "delete": {
-        "security": [{ "CognitoAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "type": "string" }
+        "security": [
+          {
+            "CognitoAuth": []
+          }
         ],
-        "responses": { "200": { "description": "Delete item" } },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete item"
+          }
+        },
         "x-amazon-apigateway-integration": {
           "type": "aws_proxy",
           "httpMethod": "POST",
@@ -128,20 +208,28 @@
           "200": {
             "description": "CORS preflight",
             "headers": {
-              "Access-Control-Allow-Origin":  { "type": "string" },
-              "Access-Control-Allow-Methods": { "type": "string" },
-              "Access-Control-Allow-Headers": { "type": "string" }
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              }
             }
           }
         },
         "x-amazon-apigateway-integration": {
           "type": "mock",
-          "requestTemplates": { "application/json": "{\"statusCode\": 200}" },
+          "requestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
           "responses": {
             "default": {
               "statusCode": "200",
               "responseParameters": {
-                "method.response.header.Access-Control-Allow-Origin":  "'*'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
                 "method.response.header.Access-Control-Allow-Methods": "'GET,DELETE,OPTIONS'",
                 "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'"
               }

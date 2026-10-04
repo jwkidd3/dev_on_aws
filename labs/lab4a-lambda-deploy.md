@@ -20,18 +20,19 @@
 
 ## Step 1 — Create the Function & Role (6 min)
 
-> **Wherever this slide shows `user1`, substitute your own user id** (`user2`, `user3`, …). The Console doesn't expand shell vars, and every lab downstream looks up `lab4-$USER_ID` and `StudentLambdaRole-$USER_ID` literally.
+> **Wherever this lab shows `user1`, substitute your own user id** (`user2`, `user3`, …). The Console doesn't expand shell vars, and every lab downstream looks up `lab4-$USER_ID` and `StudentLambdaRole-$USER_ID` by exact name — in a shared account, a typo here means you're looking for someone else's function.
 
 1. Console → **Lambda** → **Create function**
 2. Choose **Author from scratch**
 3. Function name: `lab4-<your-user>` (e.g., `lab4-user1`)
 4. Runtime: **Python 3.12**
 5. Architecture: **arm64**
-- Role name: `StudentLambdaRole-<your-user>`
-- Policy templates: leave empty (Lambda adds the basic execution policy for CloudWatch Logs automatically)
+6. Expand **Change default execution role** → select **Create a new role from AWS policy templates**
+7. Role name: `StudentLambdaRole-<your-user>` (e.g., `StudentLambdaRole-user1`)
+8. Policy templates: leave empty — Lambda still attaches basic CloudWatch Logs permissions
+9. **Create function** — Lambda creates both the function and the role. Lab 4b adds DynamoDB / S3 permissions to this same role.
 
-6. 
-7. **Create function** — Lambda creates both the function and the role. Lab 4b adds DynamoDB / S3 permissions to this same role.
+> Don't pick **Create a new role with basic Lambda permissions** — it auto-names the role (`lab4-user1-role-abc123`) and later labs can't find it.
 
 ## Step 2 — Edit the Handler (6 min)
 

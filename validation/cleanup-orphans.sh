@@ -95,9 +95,9 @@ for F in $FNS; do
 done
 
 # ----- IAM roles (StudentLambdaRole-labval-*) -----
-step "IAM roles: StudentLambdaRole-labval-* / -bsval*"
+step "IAM roles: StudentLambdaRole-/Lab1cRole- labval-* / bsval*"
 ROLES=$(aws iam list-roles \
-  --query "Roles[?starts_with(RoleName, 'StudentLambdaRole-labval-') || starts_with(RoleName, 'StudentLambdaRole-bsval')].RoleName" \
+  --query "Roles[?starts_with(RoleName, 'StudentLambdaRole-labval-') || starts_with(RoleName, 'StudentLambdaRole-bsval') || starts_with(RoleName, 'Lab1cRole-labval-')].RoleName" \
   --output text 2>/dev/null)
 for R in $ROLES; do
   FOUND=$((FOUND+1))
@@ -134,7 +134,7 @@ for T in $TABLES; do
 done
 
 # ----- S3 buckets -----
-step "S3 buckets: labval-* / student-bsval*"
+step "S3 buckets: labval-* / student-labval-* / scratch-labval-* / student-bsval*"
 empty_versioned_bucket() {
   local B="$1"
   aws s3api list-object-versions --bucket "$B" --output json 2>/dev/null \
@@ -153,7 +153,7 @@ for i in range(0, len(items), 1000):
   aws s3 rb "s3://$B" --force >/dev/null 2>&1
 }
 BUCKETS=$(aws s3api list-buckets \
-  --query "Buckets[?starts_with(Name, 'labval-') || starts_with(Name, 'student-bsval')].Name" --output text 2>/dev/null)
+  --query "Buckets[?starts_with(Name, 'labval-') || starts_with(Name, 'student-labval-') || starts_with(Name, 'scratch-labval-') || starts_with(Name, 'student-bsval')].Name" --output text 2>/dev/null)
 for B in $BUCKETS; do
   FOUND=$((FOUND+1))
   info "bucket $B"

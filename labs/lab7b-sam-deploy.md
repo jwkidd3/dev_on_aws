@@ -1,6 +1,6 @@
 # 🔍 Lab 7b — Full App with SAM
 
-*Hands-On Lab · 45 min · Module 13 — Deployment*
+*Hands-On Lab · 55 min · Module 13 — Deployment*
 
 ## Objectives (4 min)
 
@@ -11,9 +11,13 @@
 
 ## Prerequisites (4 min)
 
-- Lab 7a complete — `~/environment/dev-on-aws/lab4/handler.py` is X-Ray-instrumented
+- Lab 7a complete
 - SAM CLI installed (`sam --version`)
-- `$POOL_ID`, `$CLIENT_ID`, `$BUCKET` exported
+- `$POOL_ID`, `$CLIENT_ID`, `$BUCKET` exported; refresh the token so the smoke tests work:
+
+```bash
+source ~/environment/dev-on-aws/refresh-token.sh
+```
 
 > **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 7b` creates-or-reuses the user pool, client, and uploads bucket the SAM template references.
 
@@ -25,16 +29,18 @@
 cd ~/environment/dev-on-aws/lab7
 ls -R
 # template.yaml
-# python/handler.py   (same X-Ray-instrumented handler from Lab 7a)
+# python/handler.py        (the X-Ray handler you copied into lab4/ in Lab 7a)
+# python/requirements.txt (aws-xray-sdk — sam build installs it for the right platform)
 ```
 
 > Open `template.yaml` in the editor. Notice:
 
 - **Parameters** — pool/client IDs and bucket passed in at deploy time; no hard-coding
 - **Globals** — `Tracing: Active` enables X-Ray on every function in the stack
-- **Api** — `HttpApi` with a Cognito JWT authorizer wired from parameters
+- **ItemsTable** — a DynamoDB table with the same `pk`/`sk` shape as `Items-userN`; no `TableName`, so CloudFormation names it from the stack — unique per student
+- **Api** — `HttpApi` (the cheaper, simpler API type) with a Cognito **JWT authorizer** wired from parameters and CORS handled by API Gateway
 - **ItemsFn.Policies** — SAM-managed policy templates grant scoped DDB + S3 + X-Ray
-- **Events** — `Method: ANY` on `/items` routes every HTTP verb to this Lambda
+- **Events** — `ANY /items` and `ANY /items/{id}` route every verb to this Lambda. HTTP APIs send a different event shape (payload v2) than Lab 5a's REST API; the handler's `request_info()` reads both
 
 ## Step 2 — Build & First Deploy (7 min)
 
@@ -45,15 +51,11 @@ cd ~/environment/dev-on-aws/lab7
 
 sam build --use-container
 
-sam deploy --guided \
-    --stack-name dev-on-aws-$USER_ID \
-    --region us-east-1
-# Parameters:
-#   CognitoPoolId   = $POOL_ID
-#   CognitoClientId = $CLIENT_ID
-#   UploadsBucket   = $BUCKET   (from Lab 2a)
-# Confirm IAM changes: y
-# Save arguments to samconfig.toml: y
+sam deploy --guided --stack-name dev-on-aws-$USER_ID --region us-east-1 \
+    --parameter-overrides CognitoPoolId=$POOL_ID CognitoClientId=$CLIENT_ID UploadsBucket=$BUCKET
+# The prompts are pre-filled from --parameter-overrides — press Enter to accept each
+# Confirm changes before deploy: y   ·   Allow SAM CLI IAM role creation: y
+# Save arguments to configuration file: y
 ```
 
 > **No Docker available?** Install Python 3.12 natively and retry: `sudo dnf install -y python3.12`, `python3.12 -m ensurepip --upgrade`, then `sam build` (without `--use-container`). The `python3.12-pip` package isn't in every AL2023 repo snapshot — `ensurepip` is the reliable bootstrap.
@@ -74,12 +76,14 @@ echo "$API_URL"
 curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
      -H "Content-Type: application/json" \
      -d '{"title":"sam item","price":1.23}' | jq .
+curl -s -H "Authorization: $ID_TOKEN" $API_URL/items | jq .count   # 1 — a brand-new table
+curl -s -o /dev/null -w "no token: %{http_code}\n" $API_URL/items  # 401 from the JWT authorizer
 ```
 
 ## Step 4 — Iterate (7 min)
 
 1. Edit `python/handler.py` — e.g., add a new log line or annotation
-2. `sam build && sam deploy` (no `--guided`; reuses saved params)
+2. `sam build --use-container && sam deploy` (no `--guided`; reuses `samconfig.toml`)
 3. Change takes ~30 s to apply
 4. Invoke again, confirm new behavior in CloudWatch logs
 
@@ -90,7 +94,8 @@ curl -s -H "Authorization: $ID_TOKEN" -X POST $API_URL/items \
 1. **Lambda console** — the function SAM created shows up alongside `lab4-$USER_ID`; note the stack-generated suffix in its name
 2. **DynamoDB console** — the SAM-managed table appears with an auto-generated name
 3. Fire 10 test requests against `$API_URL/items`
-4. CloudWatch → **X-Ray traces** → **Service map** — confirm: client → API GW → ItemsFn → DynamoDB
+4. CloudWatch → **X-Ray traces** → **Trace Map** — confirm: client → API GW → ItemsFn → DynamoDB
+5. **Traces** → filter `annotation.method = "POST"` — the `method` annotation now comes from the HTTP API's v2 event, same as it did from REST
 
 ## Step 6 — Tear Down (7 min)
 
@@ -100,7 +105,7 @@ sam delete --stack-name dev-on-aws-$USER_ID --region us-east-1
 # Re-check the Lambda / DynamoDB consoles — the SAM-managed resources are gone.
 ```
 
-> Your Cognito pool, S3 site bucket, and the Lab 4 / Lab 5 resources (which aren't in this stack) stay put — Module 15 has the full cleanup checklist.
+> Your Cognito pool, S3 buckets, and the Lab 4–6 resources (which aren't in this stack) stay put. At the end of class, `bash ~/environment/dev-on-aws/cleanup.sh` lists everything carrying your user ID; add `--delete` to remove it (Module 15).
 
 ## Success Criteria (4 min)
 

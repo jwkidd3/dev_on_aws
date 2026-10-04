@@ -1,6 +1,6 @@
-"""Lab 3b Step 6 — Scan, timed.
+"""Lab 3b Step 7 — Scan, timed.
 
-Scan reads the ENTIRE table then filters client-side. This is why you
+Scan reads the ENTIRE table, then applies the filter — you pay for every item read. This is why you
 design access patterns for Query first and only fall back to Scan for
 ad-hoc one-offs or admin tools."""
 import os

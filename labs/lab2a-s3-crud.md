@@ -8,7 +8,7 @@
 - Upload an object and set metadata/content-type from the UI
 - View object details and the ETag
 - Enable versioning and observe object versions
-- Delete an object and read the error when a policy denies it
+- Delete an object in a versioned bucket, find the delete marker, and undo the delete
 
 > Lab 2b does the same things from code. Lab 2a is console muscle-memory.
 
@@ -53,12 +53,15 @@
 2. On the object page → **Versions** tab → you should see 2 versions with different ETags
 3. Pick the older version → **Download** → confirm you get the original content
 
-## Step 5 — Try a Forbidden Delete (6 min)
+## Step 5 — Delete & Undelete with Versioning (6 min)
 
-1. Navigate to a bucket that isn't yours (e.g., the instructor's `staff-` prefix)
-2. Try **Delete** — read the red error banner
-3. Note the action, resource ARN, and principal in the message
-4. Back in *your* bucket, deleting your own object should succeed
+> ⚠️ The whole class shares this account and you're an admin — the Console will let you delete *anyone's* objects. Work only in **your** `student-<you>-…` bucket.
+
+1. In your bucket, select the object → **Delete** → type `delete` → **Delete objects**
+2. The object vanishes from the list. Toggle **Show versions** ON
+3. The key is still there: both versions, plus a new **Delete marker** on top — versioning turned your delete into a soft delete
+4. Select only the **Delete marker** row → **Delete** → `permanently delete`
+5. Toggle **Show versions** OFF — the object is back, at its latest version
 
 ## Step 6 — Empty Your Bucket (6 min)
 
@@ -68,8 +71,9 @@
 4. Save the name for later:
 
 ```bash
-# In the Cloud9 terminal — record the exact name you typed in the Console
-BUCKET=student-$USER_ID-uploads-$(date +%Y%m%d)
+# In the Cloud9 terminal — look up the bucket you just created (no retyping)
+BUCKET=$(aws s3api list-buckets --output text \
+  --query "Buckets[?starts_with(Name,'student-$USER_ID-uploads')].Name | [0]")
 echo "export BUCKET=$BUCKET" >> ~/.dev-on-aws.env
 source ~/.dev-on-aws.env
 echo $BUCKET    # should match the bucket you just created in the Console
@@ -80,5 +84,5 @@ echo $BUCKET    # should match the bucket you just created in the Console
 - ✅ Versioned bucket created in your prefix, BPA on
 - ✅ Object uploaded with user metadata visible in the Properties tab
 - ✅ Two versions of the same key exist; older version still downloadable
-- ✅ A delete outside your prefix fails with a readable error
+- ✅ Deleted object recovered by removing its delete marker
 - ✅ `$BUCKET` exported for later labs

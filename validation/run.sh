@@ -57,9 +57,33 @@ try() {
   return 1
 }
 
+code_is() {  # code_is "desc" expected curl-args…  (retries while a fresh deployment propagates)
+  local desc="$1" want="$2"; shift 2; local got="" i
+  for i in 1 2 3 4 5 6; do
+    got=$(curl -s -o "$TMP/http.out" -w '%{http_code}' "$@")
+    [ "$got" = "$want" ] && { pass "$desc → $got"; return 0; }
+    sleep 5
+  done
+  fail "$desc" "HTTP $got (want $want): $(head -c 140 "$TMP/http.out")"; return 1
+}
+# expect_denied "desc" cmd… — passes only on an AccessDenied
+expect_denied() {
+  local desc="$1"; shift
+  local out; out=$("$@" 2>&1) && { fail "$desc" "expected AccessDenied, call succeeded"; return; }
+  echo "$out" | grep -q "AccessDenied" && pass "$desc" || fail "$desc" "$(echo "$out" | tr '\n' ' ' | head -c 160)"
+}
+# retry_ok "desc" cmd… — IAM / S3 changes take a few seconds to apply
+retry_ok() {
+  local desc="$1"; shift; local i out
+  for i in 1 2 3 4 5 6 7 8; do out=$("$@" 2>&1) && { pass "$desc"; return 0; }; sleep 5; done
+  fail "$desc" "$(echo "$out" | tr '\n' ' ' | head -c 160)"; return 1
+}
+LABFILES="$(cd "$(dirname "$0")/.." && pwd)/labs/files"
+
 # Tracked resources (for cleanup)
 BUCKET_UPLOADS=""; BUCKET_SITE=""; TABLE=""; LAMBDA_ROLE=""; LAMBDA_FN=""
 REST_API=""; POOL_ID=""; SAM_STACK=""; PROBE_BUCKET=""
+LAB1C_ROLE=""; LAB1C_PROBE=""; LAB1C_OUT=""
 # Bootstrap-stage resources (created via labs/files/bootstrap.sh under a distinct USER_ID)
 BS_USER_ID=""; BS_BUCKET=""; BS_TABLE=""; BS_ROLE=""; BS_FN=""; BS_API=""; BS_POOL=""; BS_SITE=""
 
@@ -148,6 +172,18 @@ cleanup() {
     aws s3api head-bucket --bucket "$B" >/dev/null 2>&1 \
       && fail "bootstrap rb $B" "still present" \
       || pass "bootstrap cleanup: s3 rb $B"
+  done
+
+  # --- Lab 1c role + buckets ---
+  [ -n "$LAB1C_ROLE" ] && aws iam get-role --role-name "$LAB1C_ROLE" >/dev/null 2>&1 && {
+    for P in S3CreateOnly AllowBucketDelete; do
+      aws iam delete-role-policy --role-name "$LAB1C_ROLE" --policy-name "$P" >/dev/null 2>&1 || true
+    done
+    aws iam delete-role --role-name "$LAB1C_ROLE" >/dev/null 2>&1 \
+      && pass "iam delete-role $LAB1C_ROLE" || fail "delete $LAB1C_ROLE" "non-zero"
+  }
+  for B in "$LAB1C_PROBE" "$LAB1C_OUT" "student-${PREFIX}-waiterdemo"; do
+    [ -n "$B" ] && aws s3api head-bucket --bucket "$B" >/dev/null 2>&1 && aws s3 rb "s3://$B" --force >/dev/null 2>&1
   done
 
   # --- Main-stage teardown ---
@@ -329,35 +365,123 @@ if [ "$SKIP_BOOTSTRAP" = 0 ]; then
       fail "bootstrap 6c (idempotency re-run)" "$(tail -c 200 "$TMP/bs-rerun.log" | tr '\n' ' ')"
     fi
 
+    # Bootstrap's Cognito user (alice, same as Lab 6a) gets through the imported API
+    BS_TOKEN=$(sed -n 's/^export ID_TOKEN=//p' "$TMP/.dev-on-aws.env" | tail -1)
+    BS_URL=$(sed -n 's/^export URL=//p' "$TMP/.dev-on-aws.env" | tail -1)
+    code_is "bootstrap ID_TOKEN (alice) → GET /items" 200 -H "Authorization: $BS_TOKEN" "$BS_URL"
+
+    # refresh-token.sh — sourced, re-mints ID_TOKEN into the shell + env file
+    NEWTOK=$(bash -c "source '$LABFILES/refresh-token.sh' >/dev/null 2>&1; echo \"\$ID_TOKEN\"")
+    [ -n "$NEWTOK" ] && python3 "$LABFILES/lab6/decode_jwt.py" "$NEWTOK" --sub >/dev/null 2>&1 \
+      && grep -q "^export ID_TOKEN=$NEWTOK" "$TMP/.dev-on-aws.env" \
+      && pass "refresh-token.sh re-minted ID_TOKEN" \
+      || fail "refresh-token.sh" "no new token"
+
+    # USER_ID guard — no USER_ID anywhere must refuse (LabRole would collide for everyone)
+    mkdir -p "$TMP/noid"
+    if HOME="$TMP/noid" USER_ID= bash "$BOOTSTRAP" 1b >/dev/null 2>&1; then
+      fail "bootstrap USER_ID guard" "ran without USER_ID"
+    else
+      pass "bootstrap refuses to run without USER_ID"
+    fi
+
+    # Two versions of one key, so cleanup.sh must really empty a versioned bucket
+    BS_BKT_NOW=$(sed -n 's/^export BUCKET=//p' "$TMP/.dev-on-aws.env" | tail -1)
+    for v in 1 2; do echo "v$v" | aws s3 cp - "s3://$BS_BKT_NOW/v.txt" >/dev/null 2>&1; done
+    # cleanup.sh — dry run lists, --delete removes only this user's resources
+    N_LIST=$(USER_ID="$BS_USER_ID" bash "$LABFILES/cleanup.sh" 2>/dev/null | grep -c "would delete")
+    [ "$N_LIST" -ge 7 ] && pass "cleanup.sh dry run lists $N_LIST resources" \
+      || fail "cleanup.sh dry run" "listed $N_LIST (expected ≥7)"
+    USER_ID="$BS_USER_ID" bash "$LABFILES/cleanup.sh" --delete >"$TMP/cleanup.log" 2>&1
+    gone() { ! "$@" >/dev/null 2>&1; }
+    LEFT=""
+    gone aws lambda get-function --function-name "$BS_FN" && BS_FN="" || LEFT="$LEFT fn"
+    gone aws iam get-role --role-name "$BS_ROLE" && BS_ROLE="" || LEFT="$LEFT role"
+    gone aws apigateway get-rest-api --rest-api-id "$BS_API" && BS_API="" || LEFT="$LEFT api"
+    gone aws cognito-idp describe-user-pool --user-pool-id "$BS_POOL" && BS_POOL="" || LEFT="$LEFT pool"
+    [ "$(aws dynamodb describe-table --table-name "$BS_TABLE" --query Table.TableStatus --output text 2>/dev/null)" != "ACTIVE" ] \
+      && BS_TABLE="" || LEFT="$LEFT table"
+    gone aws s3api head-bucket --bucket "$BS_BUCKET" && BS_BUCKET="" || LEFT="$LEFT bucket"
+    gone aws s3api head-bucket --bucket "$BS_SITE" && BS_SITE="" || LEFT="$LEFT site"
+    [ -z "$LEFT" ] && pass "cleanup.sh --delete removed all bootstrap resources" \
+      || fail "cleanup.sh --delete" "still present:$LEFT"
+
     export HOME="$HOME_ORIG"
   fi
 fi
 
 # ----- Lab 1b — boto3 install & smoke -----
 step "Lab 1b — boto3 install & smoke"
-pip3 install --user --quiet boto3 >/dev/null 2>&1 \
-  && pass "pip3 install --user boto3" \
-  || fail "pip3 install boto3" "non-zero"
+if pip3 install --user --quiet boto3 >/dev/null 2>&1; then
+  pass "pip3 install --user boto3"
+elif python3 -c "import boto3" 2>/dev/null; then
+  # e.g. Homebrew Python on a laptop refuses --user installs (PEP 668); Cloud9 doesn't
+  pass "boto3 already importable (pip --user blocked on this host — fine outside Cloud9)"
+else
+  fail "pip3 install boto3" "non-zero and boto3 not importable"
+fi
 
 python3 -c "import boto3; boto3.client('sts').get_caller_identity()" 2>/dev/null \
   && pass "boto3 + STS from Python" \
   || fail "boto3 STS" "import or call failed"
 
-# ----- Lab 1c — IAM deny + policy -----
-step "Lab 1c — IAM AccessDenied + bucket-delete gap"
-# IAM CreateUser should fail for a constrained caller; but the tester likely has admin,
-# so we only assert that the CLI command path works, not that it denies.
-PROBE_BUCKET="${PREFIX}-probe"
-aws s3 mb "s3://$PROBE_BUCKET" >/dev/null 2>&1 \
-  && pass "s3 mb $PROBE_BUCKET (probe)" \
-  || fail "s3 mb probe" "non-zero"
-aws s3 rb "s3://$PROBE_BUCKET" >/dev/null 2>&1 \
-  && { pass "s3 rb probe"; PROBE_BUCKET=""; } \
-  || fail "s3 rb probe" "non-zero"
+# Real lab scripts run with the validator's synthetic USER_ID (= $PREFIX)
+export USER_ID="$PREFIX"
+
+# ----- Lab 1c — narrow role, real AccessDenied, scoped allow -----
+step "Lab 1c — Lab1cRole: deny → allow → scope holds"
+LAB1C_ROLE="Lab1cRole-${PREFIX}"
+# Trust the account root (any principal in this account that may AssumeRole) —
+# the lab trusts LabRole specifically; the validator may run as a different caller.
+cat > "$TMP/trust-1c.json" <<EOF
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow",
+ "Principal":{"AWS":"arn:aws:iam::$ACCT:root"},"Action":"sts:AssumeRole"}]}
+EOF
+sed "s/ACCT/$ACCT/" "$LABFILES/lab1/trust-policy.json" | python3 -m json.tool >/dev/null 2>&1 \
+  && pass "lab1/trust-policy.json renders to valid JSON" \
+  || fail "lab1/trust-policy.json" "invalid after sed"
+sed "s/USER/$USER_ID/" "$LABFILES/lab1/s3-create-only.json" > "$TMP/create-only.json"
+try "create-role $LAB1C_ROLE" \
+  aws iam create-role --role-name "$LAB1C_ROLE" --assume-role-policy-document "file://$TMP/trust-1c.json"
+try "put-role-policy S3CreateOnly (real lab1/s3-create-only.json)" \
+  aws iam put-role-policy --role-name "$LAB1C_ROLE" --policy-name S3CreateOnly \
+    --policy-document "file://$TMP/create-only.json"
+
+# Run a command as Lab1cRole (retrying AssumeRole through IAM propagation)
+as_1c() {
+  local creds="" i
+  for i in 1 2 3 4 5 6 7 8; do
+    creds=$(aws sts assume-role --role-arn "arn:aws:iam::$ACCT:role/$LAB1C_ROLE" \
+      --role-session-name labval --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+      --output text 2>/dev/null) && [ -n "$creds" ] && break
+    sleep 5
+  done
+  [ -z "$creds" ] && { echo "assume-role failed" >&2; return 99; }
+  env -u AWS_PROFILE AWS_ACCESS_KEY_ID="$(echo "$creds" | cut -f1)" \
+    AWS_SECRET_ACCESS_KEY="$(echo "$creds" | cut -f2)" \
+    AWS_SESSION_TOKEN="$(echo "$creds" | cut -f3)" "$@"
+}
+LAB1C_PROBE="student-${PREFIX}-probe"
+retry_ok "as Lab1cRole: s3 mb $LAB1C_PROBE (allowed)" as_1c aws s3 mb "s3://$LAB1C_PROBE"
+expect_denied "as Lab1cRole: s3 rb → AccessDenied (no delete yet)" as_1c aws s3 rb "s3://$LAB1C_PROBE"
+cat > "$TMP/allow-delete.json" <<EOF
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow",
+ "Action":["s3:DeleteBucket","s3:DeleteObject","s3:ListBucket"],
+ "Resource":["arn:aws:s3:::student-$USER_ID-*","arn:aws:s3:::student-$USER_ID-*/*"]}]}
+EOF
+try "put-role-policy AllowBucketDelete" \
+  aws iam put-role-policy --role-name "$LAB1C_ROLE" --policy-name AllowBucketDelete \
+    --policy-document "file://$TMP/allow-delete.json"
+retry_ok "as Lab1cRole: s3 rb (now allowed)" as_1c aws s3 rb "s3://$LAB1C_PROBE" \
+  && LAB1C_PROBE=""
+LAB1C_OUT="scratch-${PREFIX}"
+try "s3 mb $LAB1C_OUT (outside prefix, as caller)" aws s3 mb "s3://$LAB1C_OUT"
+expect_denied "as Lab1cRole: rb outside student-<id>-* → AccessDenied" as_1c aws s3 rb "s3://$LAB1C_OUT"
+try "s3 rb $LAB1C_OUT (cleanup as caller)" aws s3 rb "s3://$LAB1C_OUT" && LAB1C_OUT=""
 
 # ----- Lab 2a/2b — S3 -----
-step "Lab 2a/2b — S3 CRUD, metadata, presigned URLs"
-BUCKET_UPLOADS="${PREFIX}-uploads"
+step "Lab 2a/2b — S3 CRUD, metadata, presigned URLs, waiters"
+BUCKET_UPLOADS="student-${PREFIX}-uploads"
 aws s3 mb "s3://$BUCKET_UPLOADS" >/dev/null 2>&1 \
   && pass "s3 mb $BUCKET_UPLOADS" \
   || fail "s3 mb uploads" "non-zero"
@@ -377,22 +501,37 @@ aws s3api head-object --bucket "$BUCKET_UPLOADS" --key "hello.txt" \
   && pass "head-object returns metadata" \
   || fail "metadata readback" "mismatch"
 
-python3 - "$BUCKET_UPLOADS" <<'PYEOF' >/dev/null 2>&1 && pass "boto3 generate_presigned_url (GET)" || fail "presigned GET" "python error"
-import boto3, sys
-url = boto3.client("s3").generate_presigned_url(
-    "get_object", Params={"Bucket": sys.argv[1], "Key": "hello.txt"}, ExpiresIn=60)
-assert url.startswith("https://")
-PYEOF
+# Lab 2a Step 5 — delete creates a marker; removing the marker restores the object
+aws s3api delete-object --bucket "$BUCKET_UPLOADS" --key hello.txt >/dev/null 2>&1
+MARKER=$(aws s3api list-object-versions --bucket "$BUCKET_UPLOADS" --prefix hello.txt \
+  --query 'DeleteMarkers[0].VersionId' --output text 2>/dev/null)
+[ -n "$MARKER" ] && [ "$MARKER" != "None" ] \
+  && aws s3api delete-object --bucket "$BUCKET_UPLOADS" --key hello.txt --version-id "$MARKER" >/dev/null 2>&1 \
+  && aws s3api head-object --bucket "$BUCKET_UPLOADS" --key hello.txt >/dev/null 2>&1 \
+  && pass "delete marker created and removed → object restored" \
+  || fail "delete-marker undelete" "marker=$MARKER"
 
-python3 - "$BUCKET_UPLOADS" <<'PYEOF' >/dev/null 2>&1 && pass "boto3 generate_presigned_url (PUT)" || fail "presigned PUT" "python error"
-import boto3, sys
-url = boto3.client("s3").generate_presigned_url(
-    "put_object", Params={"Bucket": sys.argv[1], "Key": "up.txt"}, ExpiresIn=60)
-assert url.startswith("https://")
-PYEOF
+export BUCKET="$BUCKET_UPLOADS"
+L2="$LABFILES/lab2"
+try "lab2/seed.py" python3 "$L2/seed.py"
+try "lab2/process.py (paginator)" python3 "$L2/process.py"
+GET_URL=$(python3 "$L2/make_get_url.py" 300 2>/dev/null)
+[ "$(curl -s "$GET_URL")" = "MESSAGE 0" ] \
+  && pass "presigned GET (make_get_url.py) returns MESSAGE 0" \
+  || fail "presigned GET" "body mismatch"
+PUT_URL=$(python3 "$L2/make_put_url.py" 2>/dev/null)
+echo "from curl" > "$TMP/note.txt"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H 'Content-Type: text/plain' \
+      --upload-file "$TMP/note.txt" "$PUT_URL")" = "200" ] \
+  && pass "presigned PUT (make_put_url.py) via curl" \
+  || fail "presigned PUT" "non-200"
+WD=$(python3 "$L2/waiter_demo.py" 2>&1)
+echo "$WD" | grep -q "NoSuchBucket" && echo "$WD" | grep -q "cleaned up" \
+  && pass "lab2/waiter_demo.py (waiters + exception codes)" \
+  || fail "waiter_demo.py" "$(echo "$WD" | tail -1 | head -c 160)"
 
 # ----- Lab 3a/3b — DynamoDB -----
-step "Lab 3a/3b — DynamoDB table + GSI + CRUD"
+step "Lab 3a/3b — DynamoDB table + GSI + real lab3 scripts"
 TABLE="Items-${PREFIX}"
 aws dynamodb create-table --table-name "$TABLE" \
   --attribute-definitions \
@@ -412,42 +551,25 @@ aws dynamodb wait table-exists --table-name "$TABLE" 2>/dev/null \
   && pass "table reached ACTIVE" \
   || fail "table-exists waiter" "timeout"
 
-python3 - "$TABLE" <<'PYEOF' >/dev/null 2>&1 && pass "boto3 batch put + query" || fail "batch put/query" "python error"
-import boto3, sys
-from decimal import Decimal
-t = boto3.resource("dynamodb").Table(sys.argv[1])
-with t.batch_writer() as bw:
-    for i in range(3, 8):
-        bw.put_item(Item={"pk":"USER#validator","sk":f"ITEM#{i:03d}",
-                          "category":"widgets","price":Decimal(f"{i}.99")})
-from boto3.dynamodb.conditions import Key
-r = t.query(KeyConditionExpression=Key("pk").eq("USER#validator"))
-assert len(r["Items"]) == 5, len(r["Items"])
-PYEOF
+# Scripts read/write items.json in the cwd — run them from a scratch copy
+mkdir -p "$TMP/lab3" && cp "$LABFILES"/lab3/*.py "$TMP/lab3/"
+(cd "$TMP/lab3" && python3 seed.py) >/dev/null 2>&1 && [ -s "$TMP/lab3/items.json" ] \
+  && pass "seed.py wrote items.json" || fail "seed.py" "no items.json"
+(cd "$TMP/lab3" && python3 bulk_load.py) 2>&1 | grep -q "loaded 30 rows" \
+  && pass "bulk_load.py loaded 30 rows from items.json" || fail "bulk_load.py" "did not load 30"
+(cd "$TMP/lab3" && python3 get_item_client.py) 2>&1 | grep -q "^resource" \
+  && pass "get_item_client.py (client vs resource)" || fail "get_item_client.py" "error"
+(cd "$TMP/lab3" && python3 query_filter.py) 2>&1 | grep -q "items under" \
+  && pass "query_filter.py (paginated)" || fail "query_filter.py" "error"
+try "query_gsi.py" bash -c "cd '$TMP/lab3' && python3 query_gsi.py"
+(cd "$TMP/lab3" && python3 update_conditional.py) 2>&1 | grep -q "updated" \
+  && (cd "$TMP/lab3" && python3 update_conditional.py) 2>&1 | grep -q "ConditionalCheckFailed" \
+  && pass "update_conditional.py: 1st updates, 2nd rejected" || fail "update_conditional.py" "unexpected output"
+(cd "$TMP/lab3" && python3 scan_demo.py) 2>&1 | grep -q "items in" \
+  && pass "scan_demo.py" || fail "scan_demo.py" "error"
 
-python3 - "$TABLE" <<'PYEOF' >/dev/null 2>&1 && pass "conditional update with ADD/SET" || fail "update_item" "python error"
-import boto3, sys
-from decimal import Decimal
-t = boto3.resource("dynamodb").Table(sys.argv[1])
-t.update_item(
-    Key={"pk":"USER#validator","sk":"ITEM#003"},
-    UpdateExpression="SET price = :p ADD #v :one",
-    ExpressionAttributeNames={"#v":"views"},
-    ExpressionAttributeValues={":p":Decimal("1.00"),":one":1})
-PYEOF
-
-python3 - "$TABLE" <<'PYEOF' >/dev/null 2>&1 && pass "GSI query" || fail "GSI query" "python error"
-import boto3, sys
-from boto3.dynamodb.conditions import Key
-from decimal import Decimal
-t = boto3.resource("dynamodb").Table(sys.argv[1])
-r = t.query(IndexName="byCategory",
-            KeyConditionExpression=Key("category").eq("widgets"))
-assert len(r["Items"]) >= 1
-PYEOF
-
-# ----- Lab 4a — Lambda create + role -----
-step "Lab 4a/4b — Lambda role, function, invoke, S3 trigger"
+# ----- Lab 4a/4b — Lambda with the REAL lab4 handler -----
+step "Lab 4a/4b — Lambda role, real handler, invoke, S3 trigger"
 LAMBDA_ROLE="StudentLambdaRole-${PREFIX}"
 cat > "$TMP/trust.json" <<'EOF'
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow",
@@ -461,29 +583,14 @@ try "attach AWSLambdaBasicExecutionRole" \
   aws iam attach-role-policy --role-name "$LAMBDA_ROLE" \
     --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-# Inline policy equivalent to lab4/lambda-perms.json
-cat > "$TMP/perms.json" <<EOF
-{"Version":"2012-10-17","Statement":[
- {"Effect":"Allow",
-  "Action":["dynamodb:PutItem","dynamodb:GetItem","dynamodb:Query"],
-  "Resource":"arn:aws:dynamodb:$REGION:$ACCT:table/$TABLE"},
- {"Effect":"Allow",
-  "Action":["s3:GetObject","s3:PutObject"],
-  "Resource":"arn:aws:s3:::$BUCKET_UPLOADS/*"}]}
-EOF
-try "put-role-policy LambdaAppAccess (sed pattern equivalent)" \
+# Lab 4b Step 1 exactly: render the real lambda-perms.json with sed
+sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" "$LABFILES/lab4/lambda-perms.json" > "$TMP/perms.json"
+try "put-role-policy LambdaAppAccess (rendered lab4/lambda-perms.json)" \
   aws iam put-role-policy --role-name "$LAMBDA_ROLE" \
     --policy-name LambdaAppAccess \
     --policy-document "file://$TMP/perms.json"
 
-# IAM propagation — new roles need ~10-30s before Lambda can assume them.
-# Retry create-function with backoff instead of a blind sleep.
-cat > "$TMP/handler.py" <<'EOF'
-import json
-def handler(event, ctx):
-    return {"statusCode": 200, "body": json.dumps({"ok": True, "event": event})}
-EOF
-( cd "$TMP" && zip -q function.zip handler.py )
+( cd "$LABFILES/lab4" && zip -q "$TMP/function.zip" handler.py )
 
 LAMBDA_FN="lab4-${PREFIX}"
 created=0
@@ -494,6 +601,7 @@ for delay in 5 10 15 20 25; do
         --role "arn:aws:iam::$ACCT:role/$LAMBDA_ROLE" \
         --handler handler.handler \
         --zip-file "fileb://$TMP/function.zip" \
+        --environment "Variables={ITEMS_TABLE=$TABLE,UPLOADS_BUCKET=$BUCKET_UPLOADS}" \
         --timeout 10 --memory-size 256 >/dev/null 2>&1; then
     created=1; break
   fi
@@ -516,18 +624,44 @@ wait_lambda_active "$LAMBDA_FN" \
   && pass "function reached Active" \
   || fail "function-active waiter" "timeout"
 
+# Lab 4b Step 3 — direct invoke writes S3 + DDB and returns a presigned URL
 aws lambda invoke --function-name "$LAMBDA_FN" \
-  --payload '{"test":"validator"}' --cli-binary-format raw-in-base64-out \
-  "$TMP/out.json" >"$TMP/invoke.meta" 2>&1 \
-  && python3 -c "
+  --payload "{\"user\":\"$USER_ID\",\"title\":\"first item\",\"price\":5}" \
+  --cli-binary-format raw-in-base64-out "$TMP/out.json" >/dev/null 2>&1
+PRESIGNED=$(python3 -c "
 import json,sys
 r = json.load(open('$TMP/out.json'))
-if r.get('statusCode') != 200: sys.exit('statusCode != 200: ' + str(r))
-b = json.loads(r.get('body') or '{}')
-sys.exit(0 if b.get('ok') is True else 'body.ok not true: ' + str(b))
-" >/dev/null 2>&1 \
-  && pass "invoke + parse response" \
-  || fail "invoke" "bad response ($(cat "$TMP/out.json" 2>/dev/null | head -c 200))"
+assert r.get('statusCode') == 200, r
+b = json.loads(r['body']); assert b['sk'].startswith('ITEM#') and b['pk'] == 'USER#$USER_ID', b
+print(b['url'])" 2>/dev/null) \
+  && pass "invoke real handler → 200, ITEM# row for USER#$USER_ID" \
+  || fail "invoke" "bad response ($(head -c 200 "$TMP/out.json" 2>/dev/null))"
+[ -n "$PRESIGNED" ] && [ "$(curl -s "$PRESIGNED")" = "first item" ] \
+  && pass "handler's presigned URL serves the object" \
+  || fail "presigned URL from handler" "body mismatch"
+
+# Lab 4b Steps 4–5 — S3 trigger using the real notify.json
+try "add-permission (s3 invoke)" \
+  aws lambda add-permission --function-name "$LAMBDA_FN" --statement-id AllowS3Invoke \
+    --action lambda:InvokeFunction --principal s3.amazonaws.com \
+    --source-arn "arn:aws:s3:::$BUCKET_UPLOADS"
+sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" "$LABFILES/lab4/notify.json" > "$TMP/notify.json"
+try "put-bucket-notification-configuration (rendered notify.json)" \
+  aws s3api put-bucket-notification-configuration --bucket "$BUCKET_UPLOADS" \
+    --notification-configuration "file://$TMP/notify.json"
+# A brand-new notification config can take a few minutes to start delivering
+# (observed in this account) — re-upload every minute, give up after ~6 min.
+TRIG=""
+for i in $(seq 1 36); do
+  [ $((i % 6)) -eq 1 ] && echo "hello trigger" | aws s3 cp - "s3://$BUCKET_UPLOADS/incoming/test-$i.txt" >/dev/null 2>&1
+  sleep 10
+  TRIG=$(aws logs filter-log-events --log-group-name "/aws/lambda/$LAMBDA_FN" \
+    --filter-pattern '"S3 ObjectCreated"' --query 'events[0].message' --output text 2>/dev/null)
+  [ -n "$TRIG" ] && [ "$TRIG" != "None" ] && break
+done
+[ -n "$TRIG" ] && [ "$TRIG" != "None" ] \
+  && pass "S3 upload to incoming/ triggered the function (after $((i*10))s)" \
+  || fail "S3 trigger" "no S3 log line within 6 min"
 
 aws lambda update-function-configuration --function-name "$LAMBDA_FN" \
   --tracing-config Mode=Active >/dev/null 2>&1 \
@@ -594,6 +728,10 @@ if [ -n "$REST_API" ]; then
   aws apigateway create-deployment --rest-api-id "$REST_API" --stage-name dev \
     >/dev/null 2>&1 \
     && pass "create-deployment stage=dev" || fail "deployment" "non-zero"
+
+  URL="https://$REST_API.execute-api.$REGION.amazonaws.com/dev/items"
+  code_is "curl POST /items (no auth yet)" 200 -X POST "$URL" \
+    -H "Content-Type: application/json" -d '{"title":"from cloud9","price":1}'
 fi
 
 if [ $QUICK -eq 0 ]; then
@@ -692,8 +830,139 @@ if [ $QUICK -eq 0 ]; then
 
         try "redeploy stage=dev after import" \
           aws apigateway create-deployment --rest-api-id "$REST_API" --stage-name dev
+        # API Gateway nodes switch to a new deployment gradually, and not uniformly
+        # per route — until then some requests still hit the pre-import API.
+        # Probe every route type each round; old vs new answers differ:
+        #   GET /items (no token)       old 403 (no method)   new 401
+        #   POST /items (no token)      old 200 (no auth)     new 401
+        #   OPTIONS /items/x            old 403 (no resource) new 200
+        #   401 carries CORS header     old no                new yes
+        # Require 10 consecutive all-new rounds (max ~6 min).
+        URL="https://$REST_API.execute-api.$REGION.amazonaws.com/dev/items"
+        ok_run=0
+        for i in $(seq 1 120); do
+          g=$(curl -s -D "$TMP/g.h" -o /dev/null -w '%{http_code}' "$URL")
+          p=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" -H "Content-Type: application/json" -d '{"title":"probe","price":0}')
+          o=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$URL/x")
+          if [ "$g$p$o" = "401401200" ] && grep -qi '^access-control-allow-origin' "$TMP/g.h"; then
+            ok_run=$((ok_run+1)); else ok_run=0; fi
+          [ "$ok_run" -ge 10 ] && break; sleep 3
+        done
+        [ "$ok_run" -ge 10 ] && pass "new deployment serving consistently on every route (after ~$((i*3))s)" \
+          || fail "deployment settle" "old and new deployments still interleaved after 6 min"
       fi
     fi
+  fi
+fi
+
+# ----- Lab 6b/6c — end-to-end through the Cognito-protected API -----
+if [ $QUICK -eq 0 ] && [ -n "${AUTH:-}" ] && [ -n "$REST_API" ]; then
+  step "Lab 6b/6c — authorizer, CRUD, validation, CORS, per-user isolation"
+  H="Authorization: $AUTH"
+  code_is "no token → 401" 401 "$URL"
+  curl -s -D - -o /dev/null "$URL" | grep -qi '^access-control-allow-origin' \
+    && pass "gateway 401 carries CORS header (gateway-responses)" \
+    || fail "gateway-response CORS" "no Access-Control-Allow-Origin on 401"
+  code_is "malformed token → 401" 401 -H "Authorization: not.a.real.jwt" "$URL"
+  NEW_ID=$(curl -s -H "$H" -X POST "$URL" -H "Content-Type: application/json" \
+      -d '{"title":"from swagger","price":4.5}' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null)
+  [ -n "$NEW_ID" ] && pass "POST /items with token → id $NEW_ID" || fail "POST /items" "no id"
+  code_is "GET /items/{id}" 200 -H "$H" "$URL/$NEW_ID"
+  code_is "DELETE /items/{id}" 200 -H "$H" -X DELETE "$URL/$NEW_ID"
+  code_is "GET after delete → 404" 404 -H "$H" "$URL/$NEW_ID"
+  code_is "POST without price → 400 (request validator)" 400 -H "$H" -X POST "$URL" \
+    -H "Content-Type: application/json" -d '{"title":"no price"}'
+  curl -s -i -X OPTIONS "$URL" | grep -qi '^access-control-allow-methods' \
+    && pass "OPTIONS preflight (mock) returns CORS headers" \
+    || fail "OPTIONS preflight" "no Access-Control-Allow-Methods"
+  curl -s -i -X OPTIONS "$URL/anything" -H "Origin: http://example.com" \
+      -H "Access-Control-Request-Method: DELETE" | grep -qi '^access-control-allow-methods:.*DELETE' \
+    && pass "OPTIONS preflight on /items/{id} allows DELETE" \
+    || fail "OPTIONS /items/{id}" "no DELETE in Access-Control-Allow-Methods"
+
+  # Per-user isolation: Alice has an item, Bob sees none of them
+  curl -s -o /dev/null -H "$H" -X POST "$URL" -H "Content-Type: application/json" \
+    -d '{"title":"alice item","price":2}'
+  aws cognito-idp admin-create-user --user-pool-id "$POOL_ID" --username bob@example.com \
+    --user-attributes Name=email,Value=bob@example.com Name=email_verified,Value=true \
+    --message-action SUPPRESS >/dev/null 2>&1
+  aws cognito-idp admin-set-user-password --user-pool-id "$POOL_ID" --username bob@example.com \
+    --password 'Tr0picalStorm!' --permanent >/dev/null 2>&1
+  BOB=$(aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id "$CLIENT_ID" \
+    --auth-parameters 'USERNAME=bob@example.com,PASSWORD=Tr0picalStorm!' \
+    --query AuthenticationResult.IdToken --output text 2>/dev/null)
+  A_N=$(curl -s -H "$H" "$URL" | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])' 2>/dev/null)
+  B_N=$(curl -s -H "Authorization: $BOB" "$URL" | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])' 2>/dev/null)
+  [ "${A_N:-0}" -ge 1 ] && [ "$B_N" = "0" ] \
+    && pass "isolation: validator sees $A_N item(s), bob sees 0" \
+    || fail "per-user isolation" "validator=$A_N bob=$B_N"
+  SUBS=$(python3 "$LABFILES/lab6/decode_jwt.py" "$AUTH" "$BOB" --sub 2>/dev/null | sort -u | wc -l)
+  [ "$SUBS" -eq 2 ] && pass "decode_jwt.py --sub: two distinct subs" || fail "decode_jwt.py" "subs=$SUBS"
+
+  # Lab 6c — site bucket + generated config.js + browser-style Cognito sign-in
+  BUCKET_SITE="student-${PREFIX}-site"
+  if aws s3 mb "s3://$BUCKET_SITE" >/dev/null 2>&1 \
+     && aws s3api put-public-access-block --bucket "$BUCKET_SITE" --public-access-block-configuration \
+          "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" \
+     && aws s3 website "s3://$BUCKET_SITE/" --index-document index.html --error-document error.html \
+     && sed "s|BUCKET|$BUCKET_SITE|g" "$LABFILES/lab6/site-policy.json" > "$TMP/site-policy.json" \
+     && retry_ok "put-bucket-policy (public read)" aws s3api put-bucket-policy \
+          --bucket "$BUCKET_SITE" --policy "file://$TMP/site-policy.json"; then
+    mkdir -p "$TMP/web" && cp "$LABFILES"/lab6/web/* "$TMP/web/"
+    echo "window.APP_CONFIG={region:'us-east-1',clientId:'$CLIENT_ID',apiUrl:'$URL'};" > "$TMP/web/config.js"
+    try "s3 sync web/ (+ config.js)" aws s3 sync "$TMP/web" "s3://$BUCKET_SITE/" --delete
+    SITE_URL="http://$BUCKET_SITE.s3-website-us-east-1.amazonaws.com"
+    code_is "site index.html served" 200 "$SITE_URL/"
+    code_is "site config.js served" 200 "$SITE_URL/config.js"
+  else
+    fail "site bucket" "create/configure failed"
+  fi
+  # The page signs in by POSTing to Cognito's public InitiateAuth endpoint — same call, from curl
+  curl -s -D "$TMP/cog.h" -o "$TMP/cog.json" -X POST "https://cognito-idp.$REGION.amazonaws.com/" \
+    -H "Origin: $SITE_URL" -H "Content-Type: application/x-amz-json-1.1" \
+    -H "X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth" \
+    -d "{\"AuthFlow\":\"USER_PASSWORD_AUTH\",\"ClientId\":\"$CLIENT_ID\",\"AuthParameters\":{\"USERNAME\":\"validator@example.com\",\"PASSWORD\":\"Tr0picalStorm!\"}}"
+  grep -q IdToken "$TMP/cog.json" && grep -qi '^access-control-allow-origin' "$TMP/cog.h" \
+    && pass "browser-style InitiateAuth (index.html signIn) → IdToken + CORS" \
+    || fail "browser sign-in" "$(head -c 160 "$TMP/cog.json")"
+
+  # ----- Lab 7a — X-Ray SDK packaged for arm64 / py3.12, instrumented handler -----
+  step "Lab 7a — X-Ray packaging, tracing, annotation filter"
+  rm -rf "$TMP/pkg"
+  if python3 -m pip install --quiet --target "$TMP/pkg" --no-deps \
+       --platform manylinux2014_aarch64 --python-version 3.12 \
+       --implementation cp --only-binary=:all: aws-xray-sdk wrapt >/dev/null 2>&1; then
+    pass "pip --platform manylinux2014_aarch64 aws-xray-sdk wrapt"
+    cp "$LABFILES/lab7/python/handler.py" "$TMP/pkg/handler.py"
+    rm -f "$TMP/fn7a.zip"; (cd "$TMP/pkg" && zip -qr "$TMP/fn7a.zip" .)
+    try "update-function-code (instrumented handler + SDK)" \
+      aws lambda update-function-code --function-name "$LAMBDA_FN" --zip-file "fileb://$TMP/fn7a.zip"
+    wait_lambda_updated "$LAMBDA_FN" >/dev/null 2>&1
+    try "API stage tracingEnabled=true" \
+      aws apigateway update-stage --rest-api-id "$REST_API" --stage-name dev \
+        --patch-operations op=replace,path=/tracingEnabled,value=true
+    # A stage update re-propagates; for a short while some requests can still hit
+    # the previous (pre-import, unauthenticated) deployment. Let it settle.
+    sleep 60
+    code_is "instrumented handler: POST via API" 200 -H "$H" -X POST "$URL" \
+      -H "Content-Type: application/json" -d '{"title":"traced","price":3}'
+    code_is "instrumented handler: GET bogus id → 404" 404 -H "$H" "$URL/nope"
+    SUB=$(python3 "$LABFILES/lab6/decode_jwt.py" "$AUTH" --sub 2>/dev/null)
+    NTR=0
+    for i in $(seq 1 30); do
+      sleep 10
+      NTR=$(aws xray get-trace-summaries --start-time $(( $(date +%s) - 900 )) --end-time "$(date +%s)" \
+        --filter-expression "annotation.user = \"$SUB\" AND annotation.method = \"POST\"" \
+        --query "TraceSummaries[].Id" --output text 2>/dev/null | wc -w | tr -d ' ')
+      # (count IDs, not length() — the CLI paginates and prints one length per page)
+      [ "${NTR:-0}" -ge 1 ] 2>/dev/null && break
+    done
+    [ "${NTR:-0}" -ge 1 ] 2>/dev/null \
+      && pass "X-Ray annotation filter finds $NTR POST trace(s) for this user" \
+      || fail "X-Ray annotation filter" "no traces within 5 min"
+  else
+    fail "pip --platform install" "aws-xray-sdk/wrapt for arm64 py3.12"
   fi
 fi
 
@@ -766,6 +1035,24 @@ EOF
         "CognitoPoolId=${POOL_ID:-none} CognitoClientId=${CLIENT_ID:-none} UploadsBucket=$BUCKET_UPLOADS" \
       >/dev/null 2>&1) \
       && pass "sam deploy $SAM_STACK" || fail "sam deploy" "non-zero"
+
+    if [ -n "${AUTH:-}" ]; then
+      SAM_URL=$(aws cloudformation describe-stacks --stack-name "$SAM_STACK" \
+        --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue | [0]" --output text 2>/dev/null)
+      code_is "SAM HttpApi: no token → 401" 401 "$SAM_URL/items"
+      SAM_ID=$(curl -s -H "Authorization: $AUTH" -X POST "$SAM_URL/items" \
+          -H "Content-Type: application/json" -d '{"title":"sam item","price":1.23}' \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null)
+      [ -n "$SAM_ID" ] && pass "SAM HttpApi: POST /items → id $SAM_ID (v2 event parsed)" \
+        || fail "SAM POST /items" "no id"
+      code_is "SAM HttpApi: GET /items/{id}" 200 -H "Authorization: $AUTH" "$SAM_URL/items/$SAM_ID"
+      code_is "SAM HttpApi: DELETE /items/{id}" 200 -H "Authorization: $AUTH" -X DELETE "$SAM_URL/items/$SAM_ID"
+      PRE=$(curl -s -D - -o /dev/null -X OPTIONS "$SAM_URL/items" -H "Origin: http://example.com" \
+        -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,content-type")
+      echo "$PRE" | grep -qi '^access-control-allow-origin' \
+        && pass "SAM HttpApi: CORS preflight answered before the authorizer" \
+        || fail "SAM CORS preflight" "$(echo "$PRE" | head -1)"
+    fi
   fi
 fi
 
