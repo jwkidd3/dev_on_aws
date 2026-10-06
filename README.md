@@ -24,7 +24,7 @@ Software developers, solution architects, and IT professionals with:
 
 - **Console URL:** `https://kiddcorp.signin.aws.amazon.com/console`
 - **Usernames:** `user1`, `user2`, `user3`, … — handed out at class start
-- **Cloud9 environment:** students **create their own** in Lab 1a — new EC2, **m5.large**, **SSH** connection, Amazon Linux 2023, 30-min idle timeout
+- **Cloud9 environment:** students **create their own** in Lab 1a — new EC2, **m5.large**, **SSH** connection, Amazon Linux 2023, 30-min idle timeout — then run **`setup-cloud9.sh`** (boto3, jq, Python 3.12 + pip, latest SAM CLI, Docker access; grows the instance's own root disk 10 → **100 GB**) and **reboot**
 - **Pre-seeded per student:** the IAM user `userN` (a member of the `students` group) and a shared **`LabRole`** the Cloud9 EC2 assumes. *Everything else* — Cloud9, DynamoDB tables, Lambda roles, S3 buckets, Cognito pools, API Gateway, SAM stacks — students create in the labs.
 - **Access level:** each `userN` is a **full administrator, scoped to `us-east-1`** — `AdministratorAccess` + the `RestrictToUsEast1` deny. They can do anything in-region (including IAM); regional actions in other regions are denied; global services (IAM, STS, Route 53, CloudFront) work anywhere. `LabRole` is `PowerUserAccess` + lab IAM writes, same region lock. **Students are admins by design; they are *not* isolated from each other by IAM** — the `USER_ID` prefix convention prevents accidental name collisions but is not a security boundary, so anyone can see/modify another student's resources. Use throwaway training accounts accordingly.
 - **Instructor pre-class setup:** run **`admin/setup-account.sh --apply`** once per account. It creates `LabRole` (+ its instance profile, EC2 trust, PowerUserAccess + the IAM writes the labs need), the **`RestrictToUsEast1`** region-lock policy, and a **`students`** group that region-locks every `userN`. Idempotent; dry-run by default. See [admin/README.md](admin/README.md).
@@ -58,6 +58,9 @@ to pre-check before a delivery:
   - **S3 general-purpose buckets** — ~2 persistent per student (uploads + site) ≈
     50, plus the shared `aws-sam-cli-managed-default-*`. Under the 100 default, but
     raise it if you run back-to-back cohorts without a sweep between them.
+  - **EBS:** `setup-cloud9.sh` grows each Cloud9 root volume to 100 GB → 25 × 100 GB
+    = 2.5 TB of gp3 (default regional limit is 50 TiB). At ~$0.08/GB-month that is
+    ~$200/month **if left in place** — delete the Cloud9 environments when a cohort ends.
   - API Gateway, Lambda, DynamoDB, Cognito, IAM roles: 25× usage sits well under
     defaults. API Gateway control-plane calls are account-throttled, so 25
     simultaneous create/delete may briefly retry — not a blocker.
@@ -231,6 +234,7 @@ dev_on_aws/
     ├── bootstrap.sh          ← "catch me up" setup for any lab
     ├── refresh-token.sh      ← `source` it to re-mint the 60-min Cognito ID token (Labs 6c–7b)
     ├── cleanup.sh            ← end of class: delete only YOUR userN resources (dry run by default)
+    ├── setup-cloud9.sh       ← Lab 1a: class tools + 100 GB root disk, then reboot
     ├── lab1/  (smoke_test.py, trust-policy.json, s3-create-only.json)
     ├── lab2/  (seed.py, process.py, make_get_url.py, make_put_url.py, waiter_demo.py)
     ├── lab3/  (seed.py → items.json, bulk_load.py, get_item_client.py, query_filter.py, query_gsi.py, update_conditional.py, scan_demo.py)

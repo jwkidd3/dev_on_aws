@@ -8,6 +8,7 @@
 - Create your own Cloud9 IDE (m5.large, SSH)
 - Attach `LabRole` and turn off managed temporary credentials
 - Clone the course repo and verify the files landed
+- Run the class setup script (tools + 100 GB disk), then reboot
 
 > **Console:** `https://kiddcorp.signin.aws.amazon.com/console`
 > **User:** `user1`, `user2`, … assigned at class start · **Region:** `us-east-1`
@@ -15,6 +16,7 @@
 > 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
 >
 > - Cloud9 environment `dev-on-aws-user1` (its EC2 instance becomes `aws-cloud9-dev-on-aws-user1-…`)
+> - The setup script resizes **your instance's own** disk — it finds it from instance metadata, never by name
 
 ## Step 1 — Sign In (2 min)
 
@@ -22,7 +24,7 @@
 2. Sign in with your assigned user and password
 3. Top-right region selector → **US East (N. Virginia) us-east-1**
 
-## Step 2 — Create Your Cloud9 Environment (10 min)
+## Step 2 — Create Your Cloud9 Environment (8 min)
 
 1. Console search → **Cloud9** → **Create environment**
 2. Name: `dev-on-aws-user1` (replace with your user)
@@ -34,7 +36,7 @@
 8. Network: default VPC, any public subnet
 9. **Create** — provisioning takes ~3 min
 
-## Step 3 — Attach LabRole to Your Cloud9 EC2 (5 min)
+## Step 3 — Attach LabRole to Your Cloud9 EC2 (4 min)
 
 > By default Cloud9 uses **AWS Managed Temporary Credentials** (AMTC), which block several IAM, STS, and Lambda calls our labs need. We fix this by pointing the underlying EC2 at the pre-provisioned `LabRole` and turning AMTC off.
 
@@ -52,48 +54,58 @@
 
 > With AMTC off, the SDK/CLI fall through to IMDS and pick up `LabRole`'s credentials — no `aws configure`, no keys on disk. If the Cloud9 instance is stopped and restarted, AMTC stays off; if you delete and recreate the Cloud9, redo both steps.
 
-## Step 5 — Smoke Test & Install boto3 (3 min)
+## Step 5 — Clone the Course Repo & Verify (3 min)
 
 > In the Cloud9 terminal (bottom pane):
-
-```bash
-aws --version
-aws sts get-caller-identity
-# Arn: arn:aws:sts::...:assumed-role/LabRole/i-0abc…
-# ← confirms you're now running as LabRole, not AMTC
-
-# boto3 isn't on the default AL2023 image — install once
-pip3 install --user boto3
-python3 -c "import boto3; print(boto3.__version__)"
-```
-
-> If the ARN still shows `user/user1` or an AMTC session, redo Step 4 — Cloud9 sometimes needs a second toggle. `--user` installs boto3 into `~/.local`, which is on Python's default import path.
-
-## Step 6 — Clone the Course Repo & Verify (3 min)
 
 ```bash
 cd ~/environment
 git clone https://github.com/jwkidd3/dev_on_aws
 cp -r dev_on_aws/labs/files ./dev-on-aws
-
-# Verify — raise your hand if any line shows MISS
-cd ~/environment/dev-on-aws
-ls lab1 lab2 lab3 lab4 lab6 lab6/web lab7 lab7/python
-for f in bootstrap.sh refresh-token.sh lab1/smoke_test.py lab4/handler.py \
-         lab6/swagger.json lab6/web/index.html lab7/template.yaml; do
-  [ -f "$f" ] && echo "OK   $f" || echo "MISS $f"
-done
-chmod +x bootstrap.sh
+cd ~/environment/dev-on-aws && ls
 ```
 
-> `bootstrap.sh` is the "catch me up" script — if you ever fall behind, `bash ~/environment/dev-on-aws/bootstrap.sh <labId>` creates-or-reuses every resource that lab needs. Each subsequent lab has a reminder.
+> Expect `bootstrap.sh  cleanup.sh  lab1 … lab7  refresh-token.sh  setup-cloud9.sh`. Raise your hand if anything's missing.
+
+## Step 6 — Run the Class Setup Script, Then Reboot (5 min)
+
+```bash
+bash ~/environment/dev-on-aws/setup-cloud9.sh
+```
+
+> Open `setup-cloud9.sh` in the editor while it runs (about a minute). It:
+
+- **Checks you're running as `LabRole`.** If it stops here, Steps 3–4 aren't done; fix them and re-run.
+- **Installs the class tools:** boto3, jq, zip, Python 3.12 + pip, the latest SAM CLI, and Docker access for your user
+- **Grows your disk from 10 GB to 100 GB.** Lab 7b's `sam build --use-container` pulls multi-GB Docker images.
+- **Ends with a ⚠️ REBOOT REQUIRED box**
+
+When you see the box, run:
+
+```bash
+sudo reboot
+```
+
+> The IDE shows *Reconnecting…* for about a minute, then comes back with your files intact. The reboot applies Docker group access and finishes the disk grow.
+
+## Step 7 — Confirm After the Reboot (2 min)
+
+```bash
+aws sts get-caller-identity --query Arn --output text   # assumed-role/LabRole/i-…
+df -h /                                                 # Size ≈ 100G
+docker ps && sam --version                              # no sudo needed
+```
+
+> ARN shows `user/user1` or an AMTC session? Redo Step 4, since Cloud9 sometimes needs a second toggle. Disk still 10G or `docker ps` permission denied? You skipped the reboot; run `sudo reboot`. The script is safe to re-run at any time.
+
+> `bootstrap.sh` is the "catch me up" script. If you ever fall behind, `bash ~/environment/dev-on-aws/bootstrap.sh <labId>` creates-or-reuses every resource that lab needs. Each later lab has a reminder.
 
 ## Success Criteria (2 min)
 
 - ✅ Cloud9 `dev-on-aws-userN` created on **m5.large** with **SSH**
 - ✅ Underlying EC2 instance has `LabRole` attached and AMTC is off
-- ✅ `aws sts get-caller-identity` returns an `assumed-role/LabRole/…` ARN
-- ✅ Every folder listed and all 7 spot-check lines show `OK`
+- ✅ Setup script finished and you rebooted
+- ✅ After the reboot: `LabRole` ARN, ~100 GB root disk, `docker ps` and `sam --version` work without `sudo`
 
 > Class conventions — shown now, enforced in later labs:
 

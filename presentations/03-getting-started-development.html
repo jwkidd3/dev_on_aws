@@ -49,7 +49,7 @@
 <section>
   <h2>The Python SDK — boto3</h2>
   <pre><code># Amazon Linux 2023 ships Python 3 + pip, but NOT boto3.
-# Install once per Cloud9 environment:
+# Lab 1a's setup-cloud9.sh runs this for you:
 pip3 install --user boto3
 
 python3 -c "import boto3; print(boto3.__version__)"
@@ -122,7 +122,7 @@ for b in boto3.client("s3").list_buckets()["Buckets"]:
   <span class="lab-tag">Hands-On Lab Block · 2 × 30–35 min</span>
   <h2>🧪 Labs 1a · 1b</h2>
   <ul>
-    <li><strong>1a — Sign In &amp; Create Your Cloud9 Environment.</strong> Attach <code>LabRole</code>, disable AMTC, clone the course repo.</li>
+    <li><strong>1a — Sign In &amp; Create Your Cloud9 Environment.</strong> Attach <code>LabRole</code>, disable AMTC, clone the course repo, run <code>setup-cloud9.sh</code> (tools + 100 GB disk) and reboot.</li>
     <li><strong>1b — First SDK Call in Cloud9.</strong> <code>smoke_test.py</code> — <code>sts:GetCallerIdentity</code> + <code>s3:ListBuckets</code>.</li>
   </ul>
   <p class="small">Run after Module 4 — Lab 1c (IAM authoring) follows them.</p>

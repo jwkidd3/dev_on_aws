@@ -49,7 +49,7 @@ ls -R
 
 ## Step 2 — Build & First Deploy (7 min)
 
-> Our Lambda's `Runtime: python3.12`. AL2023 Cloud9 ships Python 3.9, so `sam build` either needs Python 3.12 locally or an official AWS Docker builder image. Cloud9 has Docker preinstalled — use `--use-container`; it's the reliable path.
+> Our Lambda's `Runtime: python3.12`. `--use-container` builds inside AWS's official Python 3.12 Docker image, so it matches Lambda exactly. That's the reliable path, and the 100 GB disk from Lab 1a's setup script leaves room for the image.
 
 ```bash
 cd ~/environment/dev-on-aws/lab7
@@ -63,7 +63,7 @@ sam deploy --guided --stack-name dev-on-aws-$USER_ID --region us-east-1 \
 # Save arguments to configuration file: y
 ```
 
-> **No Docker available?** Install Python 3.12 natively and retry: `sudo dnf install -y python3.12`, `python3.12 -m ensurepip --upgrade`, then `sam build` (without `--use-container`). The `python3.12-pip` package isn't in every AL2023 repo snapshot — `ensurepip` is the reliable bootstrap.
+> **Docker not working?** `setup-cloud9.sh` also installed Python 3.12 + pip, so plain `sam build` (without `--use-container`) works too. If `docker ps` says *permission denied*, you skipped the reboot after the setup script; run `sudo reboot`.
 
 > Creates an S3 bucket for artifacts (prefixed `aws-sam-cli-managed-default-`) on first use — acceptable in shared accounts.
 

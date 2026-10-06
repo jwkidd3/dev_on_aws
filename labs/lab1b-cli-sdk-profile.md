@@ -22,7 +22,7 @@
 
 > Open `~/environment/dev-on-aws/lab1/smoke_test.py` in the Cloud9 editor. It's the tiniest SDK program that proves your credentials are live:
 
-- Imports `boto3` (installed in Lab 1a Step 5)
+- Imports `boto3` (installed by `setup-cloud9.sh` in Lab 1a Step 6)
 - Calls `sts:GetCallerIdentity` and prints the ARN
 - Calls `s3:ListBuckets` and prints bucket names
 

@@ -40,7 +40,7 @@ ls ~/environment/dev-on-aws/lab3/
 #   → bulk_load.py  query_filter.py  query_gsi.py  scan_demo.py  seed.py  update_conditional.py
 ```
 
-> If check 1 shows `user/user1` or an AMTC session, redo Lab 1a Step 4. If check 2 shows blanks, `source ~/.dev-on-aws.env`. If check 3 is missing, re-clone per Lab 1a Step 6.
+> If check 1 shows `user/user1` or an AMTC session, redo Lab 1a Step 4. If check 2 shows blanks, `source ~/.dev-on-aws.env`. If check 3 is missing, re-clone per Lab 1a Step 5.
 
 ## Step 1 — Create the Table (5 min)
 
