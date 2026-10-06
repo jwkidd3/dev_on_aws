@@ -12,6 +12,10 @@
 > **Console:** `https://kiddcorp.signin.aws.amazon.com/console`
 > **User:** `user1`, `user2`, … assigned at class start · **Region:** `us-east-1`
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Cloud9 environment `dev-on-aws-user1` (its EC2 instance becomes `aws-cloud9-dev-on-aws-user1-…`)
+
 ## Step 1 — Sign In (2 min)
 
 1. Open the console URL in an incognito window

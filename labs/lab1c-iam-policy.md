@@ -11,6 +11,11 @@
 
 > **Why a new role?** The class shares one AWS account and you are an administrator, so IAM won't stop you from touching other students' resources. Never test a denial on anything that isn't yours. Instead you'll create a role that only *you* use, give it almost nothing, and watch IAM enforce exactly what you write.
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - IAM role `Lab1cRole-user1` (+ its inline policies)
+> - Buckets `student-user1-probe-<timestamp>` and `scratch-user1-<timestamp>` (both deleted in this lab)
+
 ## Prerequisites (2 min)
 
 - Lab 1b complete — `$USER_ID` and `$ACCT` set in `~/.dev-on-aws.env`

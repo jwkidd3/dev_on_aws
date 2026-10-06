@@ -9,6 +9,11 @@
 - Add an S3 event trigger on the uploads bucket
 - Publish a version and create an alias
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Inline policy `LambdaAppAccess` on **your** `StudentLambdaRole-user1`
+> - S3 trigger on **your** uploads bucket; version + alias `prod` on **your** `lab4-user1` (the alias name can repeat — it lives inside your function)
+
 ## Prerequisites (3 min)
 
 - Lab 4a complete — function `lab4-$USER_ID` deployed

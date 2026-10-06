@@ -8,6 +8,11 @@
 - Sign in from the browser and drive the full app: Cognito → API Gateway → Lambda → DynamoDB
 - Prove the authorizer blocks bad calls and that each user only sees their own data
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Site bucket `student-user1-site-<yyyymmdd>`
+> - User `bob@example.com` inside **your** pool
+
 ## Prerequisites (3 min)
 
 - Labs 6a and 6b complete; `$POOL_ID`, `$CLIENT_ID`, `$URL` exported

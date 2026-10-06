@@ -11,6 +11,12 @@
 
 > Lab 4b does this same work from Cloud9 and the CLI.
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Function `lab4-user1`
+> - Execution role `StudentLambdaRole-user1`
+> - Test event `hello-user1`, log group `/aws/lambda/lab4-user1`
+
 ## Prerequisites (3 min)
 
 - Lab 1a complete; Labs 2a + 3a done (or run bootstrap — see below)

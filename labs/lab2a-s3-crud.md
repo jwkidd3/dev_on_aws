@@ -12,6 +12,10 @@
 
 > Lab 2b does the same things from code. Lab 2a is console muscle-memory.
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Bucket `student-user1-uploads-<yyyymmdd>` — bucket names are unique across *all* of AWS, so the user ID + date also avoids clashing with other accounts
+
 ## Prerequisites (3 min)
 
 - Lab 1a complete (Cloud9 + LabRole + repo cloned)
@@ -23,7 +27,7 @@
 ## Step 1 — Create the Bucket (Console) (6 min)
 
 1. S3 console → **Create bucket**
-2. Name: `student-user1-uploads-<today>` (e.g. `…-20260417`)
+2. Name: `student-user1-uploads-<today>` (e.g. `…-20260417`) — **replace `user1` with your user ID**
 3. Region: **US East (N. Virginia) us-east-1**
 4. Object Ownership: **ACLs disabled** (default)
 5. Block Public Access: **leave all four boxes checked**
@@ -36,7 +40,7 @@
 1. Open the bucket → **Upload**
 2. **Add files** → pick a local file (e.g. a text or image file from your Cloud9 tree)
 3. Expand **Properties** → note **Content-Type**; change if needed
-4. Expand **Metadata** → Add user metadata: key `owner`, value `user1`
+4. Expand **Metadata** → Add user metadata: key `owner`, value = your user ID (e.g. `user1`)
 5. Click **Upload**
 
 ## Step 3 — Inspect the Object (6 min)

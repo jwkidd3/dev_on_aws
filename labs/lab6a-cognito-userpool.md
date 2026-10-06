@@ -9,6 +9,11 @@
 - Add a user and set a permanent password
 - Sign in from the CLI, get a JWT, and decode it
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - User pool renamed to `dev-on-aws-user1`
+> - App client `web` and user `alice@example.com` — these repeat across students on purpose: they live inside **your** pool
+
 ## Prerequisites (3 min)
 
 - Labs 1–5 complete (or run bootstrap below)

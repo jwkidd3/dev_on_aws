@@ -11,6 +11,11 @@
 
 > Lab 6b adds a Cognito JWT authorizer on top of this same API; request validation and CORS come with the Swagger import there.
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - REST API `dev-on-aws-user1` with stage `dev` (the stage name can repeat — it lives inside your API)
+> - In the Lambda picker, choose `lab4-user1` — the dropdown lists every student's function
+
 ## Prerequisites (3 min)
 
 - Lab 4b complete — `lab4-$USER_ID` runs `handler.handler`

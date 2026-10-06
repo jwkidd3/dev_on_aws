@@ -9,6 +9,11 @@
 - Make a code change and redeploy in place
 - Verify the deployed resources through their service consoles
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - CloudFormation stack `dev-on-aws-user1` — CloudFormation derives the function, table, and API names from it, so they're unique automatically
+> - The SAM artifact bucket `aws-sam-cli-managed-default-…` is created **once per account and shared** by the whole class — never delete it
+
 ## Prerequisites (4 min)
 
 - Lab 7a complete

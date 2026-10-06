@@ -10,6 +10,11 @@
 - Run a Scan with a filter and observe the capacity cost
 - Use PartiQL from the console's query editor
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Table `Items-user1` with GSI `byCategory`
+> - Items in partition `USER#user1`
+
 ## Prerequisites (2 min)
 
 - Day 1 labs complete (Cloud9 + LabRole + repo cloned + env file set up)
@@ -51,7 +56,7 @@ ls ~/environment/dev-on-aws/lab3/
 ## Step 2 — Add an Item (Form) (5 min)
 
 1. **Explore table items** → **Create item**
-2. Form view — fill in `pk = USER#user1`, `sk = ITEM#001`
+2. Form view — fill in `pk = USER#user1` (your user ID), `sk = ITEM#001`
 3. Click **Add new attribute** → String → `title = Blue widget`
 4. Add: `category` (String, `widgets`), `price` (Number, `19.95`), `inStock` (Boolean, true)
 5. **Create item**

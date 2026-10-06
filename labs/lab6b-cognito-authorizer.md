@@ -9,6 +9,10 @@
 - Replace the hand-built resources with a Swagger import
 - Redeploy and smoke-test every method
 
+> 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
+>
+> - Authorizer `cognito-user1` on **your** API `dev-on-aws-user1`; the Swagger import keeps the title `dev-on-aws-user1` (filled in from `__USER_ID__`)
+
 ## Prerequisites (3 min)
 
 - Labs 5a, 6a complete
