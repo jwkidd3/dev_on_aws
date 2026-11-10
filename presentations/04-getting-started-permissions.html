@@ -37,7 +37,7 @@
 </section>
 
 <section>
-  <h2>The Four Building Blocks</h2>
+  <h2>🧱 The Four Building Blocks</h2>
   <ul>
     <li><strong>User</strong> — long-lived identity with credentials (usually a human)</li>
     <li><strong>Group</strong> — bag of users that share a policy attachment</li>
@@ -47,7 +47,7 @@
 </section>
 
 <section>
-  <h2>Anatomy of a Policy</h2>
+  <h2>📜 Anatomy of a Policy</h2>
   <pre><code>{
   "Version": "2012-10-17",
   "Statement": [{
@@ -60,7 +60,7 @@
 </section>
 
 <section>
-  <h2>How IAM Decides</h2>
+  <h2>⚖️ How IAM Decides</h2>
   <ol>
     <li>Start with implicit <strong>deny</strong></li>
     <li>Any explicit <strong>Deny</strong> matches → deny. Stop.</li>
@@ -71,7 +71,7 @@
 </section>
 
 <section>
-  <h2>Roles for Code</h2>
+  <h2>🔐 Roles for Code</h2>
   <ul>
     <li>Code on AWS (Lambda, EC2, ECS) should <em>never</em> have static keys</li>
     <li>Attach a <strong>role</strong> — SDK auto-picks up rotating temp credentials</li>
@@ -80,7 +80,7 @@
 </section>
 
 <section>
-  <h2>Least Privilege</h2>
+  <h2>🎯 Least Privilege</h2>
   <ul>
     <li>Grant the narrowest <em>actions</em> on the narrowest <em>resources</em></li>
     <li>Start with an AWS-managed policy if it fits, then trim</li>
@@ -90,7 +90,7 @@
 </section>
 
 <section>
-  <h2>Debugging "Access Denied"</h2>
+  <h2>🐞 Debugging "Access Denied"</h2>
   <ol>
     <li>Read the full error — newer messages name the policy</li>
     <li><code>aws sts get-caller-identity</code> — confirm <em>which</em> identity</li>
@@ -101,13 +101,19 @@
 </section>
 
 <section data-background-color="#FF9900">
-  <span class="lab-tag">Hands-On Lab · 45 min</span>
-  <h2>🧪 Lab 1c</h2>
+  <span class="lab-tag">Hands-On Lab Block · 30 + 30 + 45 min</span>
+  <h2>🧪 Labs 1a · 1b · 1c</h2>
   <ul>
-    <li><strong>IAM Policy Authoring.</strong> Read a real AccessDenied, build &amp; assume your own narrow role, write a prefix-scoped policy for it, prove what it allows <em>and</em> denies.</li>
+    <li><strong>1a — Sign In &amp; Create Your Cloud9 Environment.</strong> Attach <code>LabRole</code>, disable AMTC, clone the course repo, run <code>setup-cloud9.sh</code> (tools + 100 GB disk) and reboot.</li>
+    <li><strong>1b — First SDK Call in Cloud9.</strong> <code>smoke_test.py</code> — <code>sts:GetCallerIdentity</code> + <code>s3:ListBuckets</code>.</li>
+    <li><strong>1c — IAM Policy Authoring.</strong> Read a real AccessDenied, build &amp; assume your own narrow role, write a prefix-scoped policy for it, prove what it allows <em>and</em> denies.</li>
   </ul>
-  <p class="small">Labs 1a (Cloud9 + LabRole) and 1b (first SDK call) ran earlier — see Module 3.</p>
-  <p class="small"><code>labs/lab1c-*.md</code></p>
+  <p class="small"><code>labs/lab1a-*.md · lab1b-*.md · lab1c-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 5 — Amazon S3: buckets, objects, and your first storage calls from code.</p>
 </section>
 
 </div></div>

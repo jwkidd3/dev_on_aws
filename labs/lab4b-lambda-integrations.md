@@ -1,6 +1,6 @@
 # ⚡ Lab 4b — Lambda with DynamoDB, S3 & Triggers
 
-*Hands-On Lab · 45 min · Module 9 — Application Logic*
+*Hands-On Lab · 45 min · CLI · Module 9 — Application Logic*
 
 ## Objectives (3 min)
 
@@ -68,6 +68,7 @@ aws lambda update-function-configuration \
     --handler handler.handler \
     --environment "Variables={ITEMS_TABLE=Items-$USER_ID,UPLOADS_BUCKET=$BUCKET}"
 aws lambda wait function-updated --function-name lab4-$USER_ID
+# --environment replaces the whole set: 4a's GREETING is gone, and the new handler doesn't need it
 
 aws lambda invoke --function-name lab4-$USER_ID \
     --payload "{\"user\":\"$USER_ID\",\"title\":\"first item\",\"price\":5}" \
@@ -83,7 +84,8 @@ aws lambda add-permission \
     --statement-id AllowS3Invoke \
     --action lambda:InvokeFunction \
     --principal s3.amazonaws.com \
-    --source-arn arn:aws:s3:::$BUCKET
+    --source-arn arn:aws:s3:::$BUCKET \
+    --source-account $ACCT
 ```
 
 > The notification config at `~/environment/dev-on-aws/lab4/notify.json` also uses `ACCT` and `USER` placeholders. Render and apply:

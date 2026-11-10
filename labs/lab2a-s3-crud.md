@@ -18,7 +18,7 @@
 
 ## Prerequisites (3 min)
 
-- Lab 1a complete (Cloud9 + LabRole + repo cloned)
+- Labs 1a + 1b complete (Cloud9 + LabRole + repo cloned; `$USER_ID` set in `~/.dev-on-aws.env`)
 - AWS Console tab open at S3
 - Your user: `user1` (replace throughout)
 
@@ -38,9 +38,9 @@
 ## Step 2 — Upload an Object (6 min)
 
 1. Open the bucket → **Upload**
-2. **Add files** → pick a local file (e.g. a text or image file from your Cloud9 tree)
-3. Expand **Properties** → note **Content-Type**; change if needed
-4. Expand **Metadata** → Add user metadata: key `owner`, value = your user ID (e.g. `user1`)
+2. **Add files** → pick a small file **on your laptop** (e.g. a new `notes.txt` with one line of text). The upload dialog opens your laptop's file browser, which can't see Cloud9 files.
+3. Expand **Properties** → **Metadata** → **Add metadata**
+4. Type **User defined**, key `owner`, value = your user ID (e.g. `user1`). S3 sets `Content-Type` automatically from the file extension; you'll see it in Step 3.
 5. Click **Upload**
 
 ## Step 3 — Inspect the Object (6 min)
@@ -53,7 +53,7 @@
 
 ## Step 4 — Observe Versioning (6 min)
 
-1. Re-upload a *changed* copy of the same file (same key)
+1. Edit the file on your laptop (add a line), then upload it again with the **same name** (same key)
 2. On the object page → **Versions** tab → you should see 2 versions with different ETags
 3. Pick the older version → **Download** → confirm you get the original content
 

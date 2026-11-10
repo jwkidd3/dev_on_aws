@@ -27,7 +27,7 @@
 
 1. Console → **API Gateway** → **Create API**
 2. Pick **REST API** → **Build**
-3. New API, Name: `dev-on-aws-<your-user>` (e.g., `dev-on-aws-user1`). **Use your own user id** — Lab 5a Step 6 queries for this exact name later.
+3. New API, Name: `dev-on-aws-<your-user>` (e.g., `dev-on-aws-user1`). **Use your own user id** — Step 6 below queries for this exact name.
 4. Endpoint type: **Regional**
 5. **Create API**
 
@@ -43,8 +43,8 @@
 1. Integration type: **Lambda function**
 2. Toggle **Lambda proxy integration** → ON
 3. Lambda function: `lab4-<your-user>` — check the name carefully; the dropdown lists **every** student's function in this shared account
-4. **Create method** — accept the "add invoke permission" prompt
-5. You should see the method diagram: Client → Method Request → Lambda → Method Response
+4. **Create method** — API Gateway adds the invoke permission to your function automatically
+5. You should see the method diagram: Method request → Integration request → Lambda → Integration response → Method response
 
 ## Step 4 — Test from the Console (5 min)
 

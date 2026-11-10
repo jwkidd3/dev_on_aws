@@ -1,6 +1,6 @@
 # 🗂️ Lab 2b — Presigned URLs & Processing Pipeline
 
-*Hands-On Lab · 45 min · Module 6 — Storage*
+*Hands-On Lab · 45 min · SDK · Module 6 — Storage*
 
 ## Objectives (2 min)
 
@@ -65,7 +65,7 @@ curl -s "$GET_URL_SHORT"; echo
 - First fetch: body is `MESSAGE 0` — the URL itself carried the signed auth
 - Second fetch: `AccessDenied` — expiry is enforced server-side
 - Treat presigned URLs like bearer tokens while valid — anyone with the link can read
-- `$(…)` trims trailing whitespace, so the URL lands in the env var clean
+- `$(…)` trims trailing newlines, so the URL lands in the env var clean
 
 ## Step 4 — Presigned PUT (6 min)
 

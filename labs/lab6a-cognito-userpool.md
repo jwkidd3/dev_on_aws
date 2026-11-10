@@ -20,7 +20,7 @@
 - `jq` available in Cloud9 (already installed)
 - AWS Console tab open
 
-> **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 6a` creates-or-reuses everything through the API Gateway stage so you can attach an authorizer at the end.
+> **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 6a` creates-or-reuses everything through the API Gateway stage so Lab 6b can attach an authorizer to it.
 
 ## Step 1 — Create the User Pool + App Client (7 min)
 
@@ -79,7 +79,7 @@ aws cognito-idp admin-set-user-password \
   --permanent
 ```
 
-> The Console can't skip the force-change step without an email round-trip. The admin API can.
+> A Console-created user starts in **Force change password** state: Alice would have to sign in once and pick a new password. The Console has no "make permanent" option; the admin API does.
 
 ## Step 6 — Sign In, Get a JWT (5 min)
 

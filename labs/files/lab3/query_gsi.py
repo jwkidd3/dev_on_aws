@@ -1,4 +1,4 @@
-"""Lab 3b Step 4 — Query the byCategory GSI.
+"""Lab 3b Step 5 — Query the byCategory GSI.
 
 Demonstrates:
   - GSI queries don't require the base table's primary key

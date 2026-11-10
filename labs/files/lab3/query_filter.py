@@ -1,4 +1,4 @@
-"""Lab 3b Step 3 — Query with a FilterExpression, paginated.
+"""Lab 3b Step 4 — Query with a FilterExpression, paginated.
 
   KeyConditionExpression  narrows the rows the database touches
   FilterExpression        runs AFTER the read — still charged for

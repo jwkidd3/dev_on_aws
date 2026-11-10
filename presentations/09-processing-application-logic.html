@@ -37,7 +37,7 @@
 </section>
 
 <section>
-  <h2>What Lambda Is</h2>
+  <h2>⚡ What Lambda Is</h2>
   <ul>
     <li>Managed compute that runs your code in response to an event</li>
     <li>You hand AWS a zip or container; AWS handles servers</li>
@@ -48,7 +48,7 @@
 </section>
 
 <section>
-  <h2>Anatomy of a Handler</h2>
+  <h2>🧬 Anatomy of a Handler</h2>
   <pre><code># Python
 def handler(event, context):
     user_id = event["requestContext"]["authorizer"]["claims"]["sub"]
@@ -61,7 +61,7 @@ def handler(event, context):
 </section>
 
 <section>
-  <h2>Invocation Models</h2>
+  <h2>📞 Invocation Models</h2>
   <ul>
     <li><strong>Synchronous</strong> — caller waits (API Gateway, ALB, CLI)</li>
     <li><strong>Asynchronous</strong> — Lambda queues, retries on failure (S3, SNS, EventBridge)</li>
@@ -71,7 +71,7 @@ def handler(event, context):
 </section>
 
 <section>
-  <h2>Permissions: Two-Sided</h2>
+  <h2>🔐 Permissions: Two-Sided</h2>
   <ul>
     <li><strong>Execution role</strong> — what your code is allowed to do (DynamoDB, S3, etc.)</li>
     <li><strong>Resource policy</strong> — who is allowed to <em>invoke</em> your Lambda (API GW, S3, EventBridge)</li>
@@ -81,7 +81,7 @@ def handler(event, context):
 </section>
 
 <section>
-  <h2>Configuration Knobs</h2>
+  <h2>🎛️ Configuration Knobs</h2>
   <ul>
     <li><strong>Memory</strong> 128 MB – 10 GB; CPU scales with memory</li>
     <li><strong>Timeout</strong> 1 s – 15 min</li>
@@ -92,7 +92,7 @@ def handler(event, context):
 </section>
 
 <section>
-  <h2>Versions, Aliases, &amp; Cold Starts</h2>
+  <h2>🏷️ Versions, Aliases, &amp; Cold Starts</h2>
   <ul>
     <li><strong>Version</strong> — immutable snapshot; <strong>alias</strong> — named pointer to a version</li>
     <li>Weighted aliases enable canary deploys (95% old / 5% new)</li>
@@ -103,7 +103,7 @@ def handler(event, context):
 </section>
 
 <section>
-  <h2>Anti-Patterns</h2>
+  <h2>🚫 Anti-Patterns</h2>
   <ul>
     <li>Initializing clients inside the handler</li>
     <li>Long polling loops — use SQS / EventBridge / Step Functions instead</li>
@@ -121,6 +121,11 @@ def handler(event, context):
     <li><strong>4b — DynamoDB + S3 + Triggers.</strong> Least-privilege policy, presigned URLs, S3 event, version + alias.</li>
   </ul>
   <p class="small"><code>labs/lab4a-*.md · lab4b-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 10 — Managing the APIs: Amazon API Gateway, the front door to your serverless app.</p>
 </section>
 
 </div></div>

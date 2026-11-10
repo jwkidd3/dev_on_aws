@@ -19,7 +19,10 @@
   .reveal ul { line-height: 1.5; }
   .reveal code { background:#f4f4f4; padding:2px 6px; border-radius:4px; color:#c7254e; }
   .reveal pre code { display:block; padding:10px 14px; font-size:0.66em; line-height:1.35; }
-  .reveal .small { font-size: 0.7em; color:#555; }</style>
+  .reveal .small { font-size: 0.7em; color:#555; }
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] p,
+  .reveal section[data-background-color] li { color:#fff; }</style>
 </head>
 <body>
 <div class="reveal"><div class="slides">
@@ -31,7 +34,7 @@
 </section>
 
 <section>
-  <h2>Why S3</h2>
+  <h2>🪣 Why S3</h2>
   <ul>
     <li>Object storage — <strong>key → bytes</strong>, flat namespace</li>
     <li>11 nines of durability, 99.99% availability</li>
@@ -41,10 +44,10 @@
 </section>
 
 <section>
-  <h2>Vocabulary</h2>
+  <h2>📖 Vocabulary</h2>
   <ul>
     <li><strong>Bucket</strong> — globally-unique named container</li>
-    <li><strong>Object</strong> — bytes you store (up to 5 TB)</li>
+    <li><strong>Object</strong> — bytes you store (up to 50 TB)</li>
     <li><strong>Key</strong> — object name; looks like a path, isn't one</li>
     <li><strong>Prefix</strong> — part of a key before <code>/</code>, used for listing</li>
     <li><strong>ETag</strong> — content hash returned on PUT / GET</li>
@@ -53,7 +56,7 @@
 </section>
 
 <section>
-  <h2>Security Defaults</h2>
+  <h2>🔒 Security Defaults</h2>
   <ul>
     <li><strong>Encryption at rest</strong> on by default (SSE-S3) since 2023</li>
     <li><strong>Block Public Access</strong> on by default for new buckets</li>
@@ -63,13 +66,37 @@
 </section>
 
 <section>
-  <h2>Consistency &amp; Exceptions</h2>
+  <h2>🐍 Connecting to S3 from Code</h2>
+  <pre><code># requirements.txt:  boto3&gt;=1.35
+# pip3 install --user -r requirements.txt
+import os, boto3
+from datetime import date
+
+user_id = os.environ["USER_ID"]                  # exported in Lab 1b
+bucket  = f"student-{user_id}-uploads-{date.today():%Y%m%d}"
+s3 = boto3.client("s3", region_name="us-east-1")
+
+resp = s3.put_object(Bucket=bucket, Key="inbox/hello.txt", Body=b"hello")
+print(resp["ETag"])                                # '"5d41402abc4b..."'
+print(resp.get("VersionId"))                       # only when versioning is on
+print(resp["ResponseMetadata"]["HTTPStatusCode"])  # 200</code></pre>
+  <p class="small">Request = keyword arguments; response = a plain <code>dict</code>. Declare <code>boto3</code> as a dependency, never vendor credentials.</p>
+</section>
+
+<section>
+  <h2>⚠️ Consistency &amp; Exceptions</h2>
   <ul>
     <li>Strongly consistent for PUT / GET / DELETE since Dec 2020</li>
-    <li><strong>NoSuchBucket</strong> / <strong>NoSuchKey</strong> — wrong name or region</li>
+    <li><strong>NoSuchBucket</strong> / <strong>NoSuchKey</strong> — wrong bucket or key name</li>
+    <li><strong>301 PermanentRedirect</strong> — bucket lives in a different region than your client</li>
     <li><strong>AccessDenied</strong> — IAM, bucket policy, or BPA blocked it</li>
     <li><strong>SlowDown</strong> — SDK retries with backoff automatically</li>
   </ul>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 6 — processing storage operations: multipart uploads, listing at scale, presigned URLs — then Labs 2a · 2b.</p>
 </section>
 
 </div></div>

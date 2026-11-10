@@ -1,6 +1,6 @@
 # 🎓 Lab 6c — Frontend & End-to-End Test
 
-*Hands-On Lab · 45 min · Module 12 — Access*
+*Hands-On Lab · 45 min · CLI + Browser · Module 12 — Access*
 
 ## Objectives (2 min)
 
@@ -16,13 +16,14 @@
 ## Prerequisites (3 min)
 
 - Labs 6a and 6b complete; `$POOL_ID`, `$CLIENT_ID`, `$URL` exported
-- Refresh your token first — it's likely over an hour old:
+
+> **Starting fresh?** Run `bash ~/environment/dev-on-aws/bootstrap.sh 6c` (creates-or-reuses the full stack through the site bucket, and `alice@example.com`), then `source ~/.dev-on-aws.env` so `$SITE` and a fresh `$ID_TOKEN` are in your shell. Then skip to Step 2.
+
+- Otherwise, refresh your token first — it's likely over an hour old:
 
 ```bash
 source ~/environment/dev-on-aws/refresh-token.sh
 ```
-
-> **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 6c` creates-or-reuses the full stack through the site bucket (and `alice@example.com`). Then skip to Step 2.
 
 ## Step 1 — Create the Site Bucket (5 min)
 
@@ -67,9 +68,9 @@ echo "http://$SITE.s3-website-us-east-1.amazonaws.com"
 ## Step 4 — Use the App in the Browser (8 min)
 
 1. Open the URL from Step 3 in a new browser tab
-2. Open DevTools → **Network** tab, then sign in as `alice@example.com` / `Tr0picalStorm!`
+2. Open DevTools → **Network** tab, set the filter to **All** (Fetch/XHR hides preflights), then sign in as `alice@example.com` / `Tr0picalStorm!`
 3. The table lists Alice's items (anything left from Lab 6b). Add two items with the form
-4. In **Network**, click the `items` requests: an `OPTIONS` **preflight** first (answered by the mock integration), then the real `GET`/`POST` carrying `Authorization: eyJ…`
+4. In **Network**, click the `items` requests: an `OPTIONS` **preflight** first (type `preflight`) (answered by the mock integration), then the real `GET`/`POST` carrying `Authorization: eyJ…`
 5. Delete one item with its **Delete** button — watch the `DELETE /items/<id>` call
 6. Sign out and try a wrong password — Cognito's error appears in *Last response*
 

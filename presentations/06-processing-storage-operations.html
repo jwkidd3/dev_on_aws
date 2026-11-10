@@ -37,7 +37,7 @@
 </section>
 
 <section>
-  <h2>Operations Worth Knowing</h2>
+  <h2>🧰 Operations Worth Knowing</h2>
   <ul>
     <li><strong>Bucket:</strong> Create / Delete, Versioning, Lifecycle, Notifications, Policy</li>
     <li><strong>Object:</strong> Put / Get / Delete / Head, Copy, ListV2 (paginated), DeleteObjects (batch)</li>
@@ -46,7 +46,7 @@
 </section>
 
 <section>
-  <h2>Large Objects → Multipart</h2>
+  <h2>📦 Large Objects → Multipart</h2>
   <ul>
     <li>Single PUT caps at 5 GB — multipart handles anything larger</li>
     <li>Use the SDK's <strong>Transfer Manager</strong> — multipart + parallel + resumable</li>
@@ -56,10 +56,10 @@
 </section>
 
 <section>
-  <h2>Presigned URLs</h2>
+  <h2>🎟️ Presigned URLs</h2>
   <pre><code>url = s3.generate_presigned_url(
     "put_object",
-    Params={"Bucket": "acme-uploads-dev",
+    Params={"Bucket": bucket,
             "Key": f"uploads/{user_id}/photo.jpg"},
     ExpiresIn=600)</code></pre>
   <ul>
@@ -67,6 +67,18 @@
     <li>Browser uploads directly to S3 — your API never sees the bytes</li>
     <li>Treat the URL like a bearer token while it's valid</li>
   </ul>
+</section>
+
+<section>
+  <h2>🌐 Static Website Hosting</h2>
+  <ul style="font-size:0.8em">
+    <li><strong>Website endpoint</strong> — <code>http://BUCKET.s3-website-us-east-1.amazonaws.com</code> — <em>HTTP only</em></li>
+    <li><strong>Index + error documents</strong> — <code>aws s3 website s3://$SITE/ --index-document index.html --error-document error.html</code></li>
+    <li><strong>Block Public Access off for this one site bucket</strong> — the deliberate exception to the Module 5 default</li>
+    <li><strong>Public-read bucket policy</strong> — <code>Allow s3:GetObject</code> to <code>"Principal": "*"</code> on <code>arn:aws:s3:::BUCKET/*</code></li>
+    <li><strong>Publish</strong> — <code>aws s3 sync web s3://$SITE/ --delete</code></li>
+  </ul>
+  <p class="small">Production / HTTPS: keep the bucket private behind <strong>CloudFront + Origin Access Control (OAC)</strong>. Lab 6c (Day 3) serves your frontend from the website endpoint.</p>
 </section>
 
 <section data-background-color="#FF9900">
@@ -77,6 +89,11 @@
     <li><strong>2b — S3 via SDK.</strong> Round-trip pipeline, paginator, presigned GET + PUT URLs.</li>
   </ul>
   <p class="small"><code>labs/lab2a-*.md · lab2b-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 7 — Amazon DynamoDB, first thing on Day 2.</p>
 </section>
 
 </div></div>

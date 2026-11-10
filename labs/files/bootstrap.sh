@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent "catch me up" setup for any lab in this course.
 # Usage:   bash bootstrap.sh <labId>
-# labId ∈ { 1b 2a 2b 3a 3b 4a 4b 5a 6a 6b 6c 7a 7b }
+# labId ∈ { 1b 1c 2a 2b 3a 3b 4a 4b 5a 6a 6b 6c 7a 7b }
 #
 # Creates-or-reuses every AWS resource the target lab depends on and
 # exports the env vars downstream labs reference into ~/.dev-on-aws.env.
@@ -50,6 +50,9 @@ ensure_env() {
   fi
   ACCT=$(aws sts get-caller-identity --query Account --output text)
   putenv "AWS_REGION=$REGION"
+  putenv "AWS_DEFAULT_REGION=$REGION"
+  putenv 'AWS_PAGER=""'
+  grep -qs 'source ~/.dev-on-aws.env' ~/.bashrc || echo 'source ~/.dev-on-aws.env' >> ~/.bashrc
   putenv "USER_ID=$USER_ID"
   putenv "ACCT=$ACCT"
   export USER_ID ACCT
@@ -379,7 +382,7 @@ case "$LAB" in
   6b)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito ;;
   7a|7b)          ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito; ensure_api_import ;;
   6c)             ensure_env; ensure_bucket; ensure_table; ensure_lambda; ensure_api; ensure_cognito; ensure_api_import; ensure_site ;;
-  *) echo "Unknown lab: $LAB  (expected 1b|2a|2b|3a|3b|4a|4b|5a|6a|6b|6c|7a|7b)" >&2; exit 2 ;;
+  *) echo "Unknown lab: $LAB  (expected 1b|1c|2a|2b|3a|3b|4a|4b|5a|6a|6b|6c|7a|7b)" >&2; exit 2 ;;
 esac
 
 echo

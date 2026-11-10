@@ -1,4 +1,4 @@
-"""Lab 3b Step 5 — Conditional update.
+"""Lab 3b Step 6 — Conditional update.
 
 Run this script twice. The first run updates ITEM#003's price and bumps
 views by 1. The second run is rejected with ConditionalCheckFailedException

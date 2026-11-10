@@ -1,8 +1,8 @@
 # 🧪 Lab 1a — Sign In & Create Your Cloud9 Environment
 
-*Hands-On Lab · 30 min · Console · Day 1 — Environment Setup*
+*Hands-On Lab · 30 min · Console · Module 3 — Development Environment*
 
-## Objectives & Access (2 min)
+## Objectives (2 min)
 
 - Sign into the class account
 - Create your own Cloud9 IDE (m5.large, SSH)
@@ -35,6 +35,7 @@
 7. Connection: **Secure Shell (SSH)** ← not SSM
 8. Network: default VPC, any public subnet
 9. **Create** — provisioning takes ~3 min
+10. When the status shows **Ready**, click **Open** (Cloud9 IDE column) — keep this IDE tab open for the rest of the course
 
 ## Step 3 — Attach LabRole to Your Cloud9 EC2 (4 min)
 
@@ -47,7 +48,7 @@
 
 ## Step 4 — Disable Managed Credentials in Cloud9 (2 min)
 
-1. Back in the Cloud9 IDE, top-left gear icon → **Preferences**
+1. Back in the Cloud9 IDE tab, top-left gear icon → **Preferences**
 2. Left panel → **AWS Settings** → **Credentials**
 3. Toggle **AWS managed temporary credentials** to **OFF**
 4. Close the Preferences tab
@@ -65,7 +66,7 @@ cp -r dev_on_aws/labs/files ./dev-on-aws
 cd ~/environment/dev-on-aws && ls
 ```
 
-> Expect `bootstrap.sh  cleanup.sh  lab1 … lab7  refresh-token.sh  setup-cloud9.sh`. Raise your hand if anything's missing.
+> Expect `bootstrap.sh  cleanup.sh  lab1  lab2  lab3  lab4  lab6  lab7  refresh-token.sh  setup-cloud9.sh` (there is no `lab5` folder — Lab 5a is all CLI). Raise your hand if anything's missing.
 
 ## Step 6 — Run the Class Setup Script, Then Reboot (5 min)
 

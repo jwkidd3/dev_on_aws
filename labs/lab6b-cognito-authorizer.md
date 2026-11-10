@@ -1,6 +1,6 @@
 # 🎓 Lab 6b — API Gateway Authorizer & Swagger Import
 
-*Hands-On Lab · 45 min · Module 12 — Access*
+*Hands-On Lab · 45 min · CLI · Module 12 — Access*
 
 ## Objectives (2 min)
 
@@ -11,7 +11,7 @@
 
 > 🏷️ **Unique names — one shared account.** The whole class works in the same AWS account and region, and you're an admin: nothing stops you from overwriting or deleting a classmate's resource with the same name. Every name below uses `user1` — **replace it with your own user ID** (`$USER_ID` does this automatically in the terminal; in the Console you type it).
 >
-> - Authorizer `cognito-user1` on **your** API `dev-on-aws-user1`; the Swagger import keeps the title `dev-on-aws-user1` (filled in from `__USER_ID__`)
+> - Authorizer `cognito-user1` on **your** API `dev-on-aws-user1` (Steps 1–2). The Swagger import in Step 5 replaces it with `CognitoAuth` from the file and keeps the title `dev-on-aws-user1` (filled in from `__USER_ID__`)
 
 ## Prerequisites (3 min)
 
@@ -48,7 +48,7 @@ aws apigateway update-method \
   --http-method POST \
   --patch-operations \
     op=replace,path=/authorizationType,value=COGNITO_USER_POOLS \
-    op=replace,path=/authorizerId,value=$AUTH_ID 
+    op=replace,path=/authorizerId,value=$AUTH_ID
 
 aws apigateway create-deployment \
   --rest-api-id $API_ID --stage-name dev
@@ -107,7 +107,7 @@ aws lambda add-permission --function-name lab4-$USER_ID \
 aws apigateway create-deployment --rest-api-id $API_ID --stage-name dev
 ```
 
-> `--mode overwrite` replaces every resource, method, and authorizer on the API with what the file declares — your Step 1–2 hand wiring is now reproducible from version control.
+> `--mode overwrite` replaces every resource, method, and authorizer on the API with what the file declares — your Step 1–2 hand wiring is now reproducible from version control. Your hand-made `cognito-$USER_ID` authorizer is gone, replaced by the file's `CognitoAuth`, so the `$AUTH_ID` saved earlier no longer points at anything.
 
 > ⏱️ A new deployment reaches API Gateway's nodes gradually — for a minute or two, some requests can still hit the *old* API (no authorizer, no GET). Wait until it's consistent before Step 6:
 

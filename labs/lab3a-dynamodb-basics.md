@@ -37,7 +37,7 @@ echo "USER_ID=$USER_ID  ACCT=$ACCT  BUCKET=$BUCKET"
 
 # 3. Repo + files still on disk
 ls ~/environment/dev-on-aws/lab3/
-#   → bulk_load.py  query_filter.py  query_gsi.py  scan_demo.py  seed.py  update_conditional.py
+#   → bulk_load.py  get_item_client.py  query_filter.py  query_gsi.py  scan_demo.py  seed.py  update_conditional.py
 ```
 
 > If check 1 shows `user/user1` or an AMTC session, redo Lab 1a Step 4. If check 2 shows blanks, `source ~/.dev-on-aws.env`. If check 3 is missing, re-clone per Lab 1a Step 5.
@@ -86,15 +86,15 @@ ls ~/environment/dev-on-aws/lab3/
 2. Partition key: `pk = USER#<your-user-id>` (e.g., `USER#user1`)
 3. Sort key: `begins_with ITEM#`
 4. **Run**
-5. Scroll right — the returned *Read capacity units* tells you what the query cost
+5. The **Completed** banner above the results shows items returned and the read capacity units the query consumed
 
 ## Step 5 — Scan + Filter (4 min)
 
 1. Switch to **Scan**
 2. Add filter: `category = widgets`
 3. **Run**
-4. Note the time taken and RCU used compared to the Query
-5. This is the "scan cost" lesson you'll remember every time you design a table
+4. Compare the **Completed** banner with the Query's: the Scan reads *every* item in the table, then throws away the ones that don't match
+5. With two items the cost looks identical. At scale it isn't: a Scan's cost grows with the table, a Query's with the partition. Lab 3b Step 7 makes the difference visible with 30 rows
 
 ## Step 6 — PartiQL in the Console (7 min)
 

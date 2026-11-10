@@ -35,7 +35,7 @@
 </section>
 
 <section>
-  <h2>Monolith vs. Serverless</h2>
+  <h2>🏛️ Monolith vs. Serverless</h2>
   <ul>
     <li><strong>Monolith</strong> — one deploy, one DB, one process. Simple at first; painful to scale and change.</li>
     <li><strong>Serverless</strong> — small functions + managed services + pay-per-request</li>
@@ -44,7 +44,7 @@
 </section>
 
 <section>
-  <h2>The App You'll Build</h2>
+  <h2>🧩 The App You'll Build</h2>
   <p class="small">A web app for managing a catalog of items with images.</p>
   <ul>
     <li>Users sign up and sign in</li>
@@ -55,7 +55,7 @@
 </section>
 
 <section>
-  <h2>Reference Architecture</h2>
+  <h2>🗺️ Reference Architecture</h2>
   <div class="arch">
     <div><strong>Frontend</strong><br><span class="small">S3 + CloudFront</span></div>
     <div><strong>Auth</strong><br><span class="small">Cognito user pool</span></div>
@@ -70,7 +70,7 @@
 </section>
 
 <section>
-  <h2>Request Flow</h2>
+  <h2>🔄 Request Flow</h2>
   <ol>
     <li>Browser loads static site from <strong>S3 / CloudFront</strong></li>
     <li>Signs in against <strong>Cognito</strong> → gets a <strong>JWT</strong></li>
@@ -83,7 +83,7 @@
 </section>
 
 <section>
-  <h2>Why These Services?</h2>
+  <h2>🤔 Why These Services?</h2>
   <ul>
     <li><strong>S3</strong> — cheapest, most durable object storage; static-site hosting in one command</li>
     <li><strong>DynamoDB</strong> — single-digit-ms NoSQL; no servers</li>
@@ -94,7 +94,7 @@
 </section>
 
 <section>
-  <h2>Where You'd Pick Differently</h2>
+  <h2>⚖️ Where You'd Pick Differently</h2>
   <p class="small">Serverless isn't always the answer.</p>
   <ul>
     <li>Compute &gt; 15 min → ECS/Fargate or EC2</li>

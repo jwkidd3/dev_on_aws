@@ -44,7 +44,7 @@
 </section>
 
 <section class="dense">
-  <h2>How Auth Evolved</h2>
+  <h2>📜 How Auth Evolved</h2>
   <ul>
     <li><strong>Basic auth</strong> — username:password on every request; credentials everywhere, no revocation</li>
     <li><strong>Server-side sessions</strong> — cookie + session store; revocable, but stateful and single-origin</li>
@@ -56,22 +56,17 @@
 </section>
 
 <section>
-  <h2>Don't Roll Your Own</h2>
+  <h2>🛡️ Don't Roll Your Own — Use Cognito</h2>
   <ul>
-    <li>Password hashing, MFA, password reset, email verification — all easy to subtly break</li>
-    <li>Account recovery and lockout are regulatory minefields</li>
-    <li>Social IdPs need constant protocol updates</li>
-    <li>Use a managed service. Cognito, Auth0, Okta — pick one.</li>
+    <li>Password hashing, MFA, reset, email verification — all easy to subtly break</li>
+    <li>Account recovery and lockout are regulatory minefields; social IdPs need constant protocol updates</li>
+    <li>Use a managed identity service — Cognito, Auth0, Okta are the same category</li>
+    <li><strong>Cognito</strong> is AWS's: sign-up, sign-in, reset, MFA, social login, lockout — wired directly into AWS</li>
   </ul>
 </section>
 
 <section>
-  <h2>What Cognito Is</h2>
-  <p class="small">Identity-as-a-service. A managed replacement for the auth code you'd otherwise build in-house: sign-up, sign-in, password reset, MFA, social login, account lockout. Same category as Auth0 and Okta, wired directly into AWS.</p>
-</section>
-
-<section>
-  <h2>Cognito — Two Pieces</h2>
+  <h2>🧩 Cognito — Two Pieces</h2>
   <ul>
     <li><strong>User Pool</strong> — the user directory. Stores profiles, hashes passwords, handles sign-up / sign-in, issues JWTs.</li>
     <li><strong>Identity Pool</strong> — exchanges an ID token for short-lived AWS credentials so a browser can call AWS services directly (rare; mostly for native apps).</li>
@@ -80,41 +75,43 @@
 </section>
 
 <section>
-  <h2>What a JWT Looks Like</h2>
+  <h2>🎟️ What a JWT Looks Like</h2>
   <pre><code>eyJhbGciOiJSUzI1NiIs...   header
 .
 eyJzdWIiOiJ1c2VyMSIs...   payload  (sub, email, exp, aud, iss)
 .
 MXp1ZVZ0ZGN...            signature</code></pre>
   <ul>
-    <li>Three Base64-encoded sections joined by dots</li>
+    <li>Three base64url-encoded sections joined by dots</li>
     <li>Payload is readable — never put secrets in a JWT</li>
     <li>Signature verifies the token wasn't tampered with</li>
   </ul>
 </section>
 
 <section>
-  <h2>Tokens Cognito Issues</h2>
+  <h2>🪙 Tokens Cognito Issues</h2>
   <ul>
     <li><strong>ID token</strong> — identity claims (<code>sub</code>, <code>email</code>, custom attrs)</li>
-    <li><strong>Access token</strong> — scoped permissions; what your API trusts</li>
+    <li><strong>Access token</strong> — OAuth scopes; send it when your API authorizes <em>by scope</em></li>
     <li><strong>Refresh token</strong> — exchanged for new access/ID without re-login</li>
     <li>Default lifetimes: ID/access 1 h, refresh 30 d (configurable per app client)</li>
+    <li>Our labs: a REST API Cognito authorizer with <em>no</em> OAuth scopes validates the <strong>ID token</strong> — that's what Labs 6b/6c send</li>
   </ul>
 </section>
 
 <section>
-  <h2>OAuth Flow to Use</h2>
+  <h2>🔑 OAuth Flow to Use</h2>
   <ul>
     <li><strong>Authorization Code + PKCE</strong> — the right flow for SPAs and mobile</li>
     <li><strong>Client Credentials</strong> — machine-to-machine; no user</li>
     <li>Avoid Implicit (deprecated) and Resource-Owner-Password (legacy)</li>
-    <li>Hosted UI gives you sign-up / sign-in pages out of the box</li>
+    <li>SPA SDK default is SRP (<code>USER_SRP_AUTH</code>) — the labs enable <code>USER_PASSWORD_AUTH</code> only to test from the terminal</li>
+    <li><strong>Managed login</strong> (formerly Hosted UI) gives you sign-up / sign-in pages out of the box</li>
   </ul>
 </section>
 
 <section>
-  <h2>Protecting API Gateway</h2>
+  <h2>🚪 Protecting API Gateway</h2>
   <ul>
     <li>Attach a <strong>Cognito User Pool authorizer</strong> to each method</li>
     <li>API GW validates signature, expiry, audience</li>
@@ -124,12 +121,12 @@ MXp1ZVZ0ZGN...            signature</code></pre>
 </section>
 
 <section>
-  <h2>Best Practices</h2>
+  <h2>✅ Best Practices</h2>
   <ul>
     <li><strong>Authorization Code + PKCE</strong> for browser apps</li>
     <li>Never store tokens in <code>localStorage</code> — in-memory or http-only cookie</li>
     <li>MFA on for privileged accounts; optional for the rest</li>
-    <li>Turn on <strong>advanced security</strong> for compromised-credential detection</li>
+    <li>Turn on <strong>threat protection</strong> (formerly advanced security; Plus feature plan) for compromised-credential detection</li>
     <li>Use Lambda triggers sparingly — each is a failure mode in your sign-in path</li>
   </ul>
 </section>
@@ -138,11 +135,16 @@ MXp1ZVZ0ZGN...            signature</code></pre>
   <span class="lab-tag">Capstone Lab Block · 3 × 45 min</span>
   <h2>🎓 Labs 6a · 6b · 6c</h2>
   <ul>
-    <li><strong>6a — Cognito User Pool &amp; JWT.</strong> Create pool + client, add user via CLI, decode the token.</li>
+    <li><strong>6a — Cognito User Pool &amp; JWT.</strong> Create pool, client and user <code>alice</code> in the Console; sign in from the CLI and decode the ID token.</li>
     <li><strong>6b — Authorizer &amp; Swagger Import.</strong> Attach Cognito authorizer, overwrite the API from a Swagger file.</li>
     <li><strong>6c — Frontend End-to-End.</strong> Wire <code>config.js</code>, sync to site bucket, sign in, CRUD from the browser.</li>
   </ul>
   <p class="small"><code>labs/lab6a-*.md · lab6b-*.md · lab6c-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 13 — Deploying Your Application: DevOps fundamentals, AWS SAM, and shipping safely.</p>
 </section>
 
 </div></div>

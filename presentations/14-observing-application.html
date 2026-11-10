@@ -44,7 +44,7 @@
 </section>
 
 <section>
-  <h2>Monitoring vs. Observability</h2>
+  <h2>🔭 Monitoring vs. Observability</h2>
   <ul>
     <li><strong>Monitoring</strong> — "is this known metric above/below a threshold?"</li>
     <li><strong>Observability</strong> — "what is this system doing right now?" — investigate without shipping new code</li>
@@ -53,7 +53,7 @@
 </section>
 
 <section>
-  <h2>Three Pillars</h2>
+  <h2>🏛️ Three Pillars</h2>
   <ul>
     <li><strong>Metrics</strong> — numbers over time. Cheap, fast.</li>
     <li><strong>Logs</strong> — text events. Richer, more expensive.</li>
@@ -63,7 +63,7 @@
 </section>
 
 <section>
-  <h2>Structured Logging</h2>
+  <h2>📝 Structured Logging</h2>
   <pre><code>log.info(json.dumps({
   "request_id": ctx.aws_request_id,
   "user_id":    user_id,
@@ -78,7 +78,7 @@
 </section>
 
 <section>
-  <h2>Alarms That Matter</h2>
+  <h2>🚨 Alarms That Matter</h2>
   <ul>
     <li>API Gateway <code>5XXError</code> &gt; 1% for 5 min</li>
     <li>Lambda <code>Errors</code> &gt; 0 for 2 datapoints</li>
@@ -89,7 +89,7 @@
 </section>
 
 <section class="dense">
-  <h2>CloudWatch Application Insights</h2>
+  <h2>🤖 CloudWatch Application Insights</h2>
   <ul>
     <li>Hand-tuning every alarm doesn't scale — Application Insights automates the baseline</li>
     <li>Point it at a <strong>resource group</strong> (your Lambdas, API, tables); it discovers the components</li>
@@ -101,9 +101,10 @@
 </section>
 
 <section>
-  <h2>AWS X-Ray</h2>
+  <h2>🩻 AWS X-Ray</h2>
   <ul>
     <li>Distributed tracing across Lambda, API GW, DynamoDB, S3</li>
+    <li>REST APIs emit X-Ray segments; <strong>HTTP APIs don't</strong> — no API Gateway node in their trace map</li>
     <li>Service map shows the shape of your app visually</li>
     <li>Trace ID propagates through HTTP headers and Lambda context</li>
     <li>Pay per trace recorded; sample aggressively in production</li>
@@ -111,7 +112,7 @@
 </section>
 
 <section>
-  <h2>Enabling X-Ray</h2>
+  <h2>🛠️ Enabling X-Ray</h2>
   <pre><code>from aws_xray_sdk.core import xray_recorder, patch_all
 patch_all()  # auto-instrument boto3, requests, etc.
 
@@ -120,14 +121,15 @@ def process_item(event):
     xray_recorder.put_annotation("user", event["user"])
     # ...</code></pre>
   <ul>
-    <li>API GW + Lambda: one toggle each (<code>Tracing: Active</code> in SAM)</li>
+    <li>REST API + Lambda: one toggle each (<code>Tracing: Active</code> on a SAM function)</li>
     <li>Add <code>AWSXRayDaemonWriteAccess</code> to the function's role</li>
     <li><strong>Annotations</strong> are indexed (filterable); <strong>metadata</strong> isn't</li>
   </ul>
+  <p class="small">X-Ray SDKs entered maintenance mode on Feb 25, 2026 (security fixes only); AWS recommends OpenTelemetry (ADOT) for new instrumentation. Lab 7a uses the X-Ray SDK as the simplest way to see annotations.</p>
 </section>
 
 <section>
-  <h2>Four Golden Signals</h2>
+  <h2>🌟 Four Golden Signals</h2>
   <ul>
     <li><strong>Latency</strong> — how long requests take</li>
     <li><strong>Traffic</strong> — how many requests there are</li>
@@ -144,7 +146,13 @@ def process_item(event):
     <li><strong>7a — Instrument Lambda with X-Ray.</strong> Package the SDK for arm64, annotate segments, turn on active tracing for Lambda + API Gateway, read the trace map, filter by annotation.</li>
     <li><strong>7b — SAM, Trace Map &amp; Cleanup.</strong> <code>sam build</code> + guided <code>sam deploy</code> of the 7a handler (Module 13), iterate with an in-place redeploy, verify resources in each console, <code>sam delete</code>.</li>
   </ul>
+  <p class="small">7b's HTTP API emits no X-Ray segments: its trace map shows client → function → DynamoDB/S3 with no API Gateway node, unlike 7a's REST API.</p>
   <p class="small"><code>labs/lab7a-*.md · lab7b-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 15 — Course Wrap-up: what you built, habits to keep, cleanup, and where to go next.</p>
 </section>
 
 </div></div>

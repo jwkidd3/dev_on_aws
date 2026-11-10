@@ -36,7 +36,7 @@
 </section>
 
 <section>
-  <h2>Monolith Pain</h2>
+  <h2>🧱 Monolith Pain</h2>
   <ul>
     <li>One codebase, one deploy — a typo in reporting breaks checkout</li>
     <li>Any team that wants to ship coordinates with every other team</li>
@@ -46,7 +46,7 @@
 </section>
 
 <section>
-  <h2>Microservices</h2>
+  <h2>🧩 Microservices</h2>
   <p>Small, independently-deployable services that each own one capability and one data store, communicating over APIs or async events.</p>
   <div class="grid">
     <div><strong>Independent deploys</strong></div>
@@ -58,7 +58,7 @@
 </section>
 
 <section>
-  <h2>Decoupling Patterns</h2>
+  <h2>🔗 Decoupling Patterns</h2>
   <ul>
     <li><strong>DDD bounded contexts</strong> — one service per business capability</li>
     <li><strong>Choreography</strong> — services publish events, others subscribe (EventBridge, SNS)</li>
@@ -68,7 +68,7 @@
 </section>
 
 <section>
-  <h2>Event-Driven on AWS</h2>
+  <h2>📣 Event-Driven on AWS</h2>
   <ul>
     <li><strong>EventBridge</strong> — central bus, content-based routing</li>
     <li><strong>SNS</strong> — fan-out pub/sub, topic-based</li>
@@ -79,7 +79,7 @@
 </section>
 
 <section>
-  <h2>AWS Step Functions</h2>
+  <h2>🔀 AWS Step Functions</h2>
   <ul>
     <li>Serverless state machine — JSON describes states and transitions</li>
     <li><strong>Task</strong>, <strong>Choice</strong>, <strong>Parallel</strong>, <strong>Map</strong>, <strong>Wait</strong>, <strong>Pass/Succeed/Fail</strong></li>
@@ -89,48 +89,34 @@
 </section>
 
 <section>
-  <h2>A State Machine, Worked</h2>
+  <h2>🛠️ A State Machine, Worked</h2>
   <pre><code>{
   "StartAt": "ValidateOrder",
   "States": {
-    "ValidateOrder": {
-      "Type": "Task",
-      "Resource": "arn:aws:lambda:…:function:validate",
-      "Retry": [{ "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 2, "MaxAttempts": 3, "BackoffRate": 2.0 }],
-      "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "OrderFailed" }],
-      "Next": "InStock?"
-    },
-    "InStock?": {
-      "Type": "Choice",
-      "Choices": [{ "Variable": "$.stock", "NumericGreaterThan": 0,
-                    "Next": "ChargeCard" }],
-      "Default": "OrderFailed"
-    },
+    "ValidateOrder": { "Type": "Task", "Resource": "arn:…:validate",
+                       "Retry": [{ "ErrorEquals": ["States.ALL"], "MaxAttempts": 3 }],
+                       "Next": "InStock?" },
+    "InStock?": { "Type": "Choice", "Default": "OrderFailed",
+                  "Choices": [{ "Variable": "$.stock", "NumericGreaterThan": 0,
+                                "Next": "ChargeCard" }] },
     "ChargeCard":  { "Type": "Task", "Resource": "arn:…:charge", "End": true },
     "OrderFailed": { "Type": "Fail", "Error": "OrderError" }
   }
 }</code></pre>
-  <p class="small"><code>ValidateOrder</code> retries 3× with exponential backoff (2 s → 4 s → 8 s), then <code>Catch</code> routes to <code>OrderFailed</code> — no retry code in any Lambda. <code>Choice</code> branches on the validator's own output (<code>$.stock</code>). The console renders this JSON as a flowchart and replays any execution state-by-state.</p>
-</section>
-
-<section>
-  <h2>Idempotency Is Mandatory</h2>
-  <ul>
-    <li>Async + event-driven systems will redeliver</li>
-    <li>Same event applied twice must have the same effect</li>
-    <li>Common: a DynamoDB item keyed on event ID, set to "seen" on first handle</li>
-    <li>AWS Lambda Powertools for Python has a ready-to-use idempotency module</li>
+  <ul class="small">
+    <li><code>Retry</code> re-runs a failed task with backoff — no retry code in any Lambda (add <code>Catch</code> to route errors to a fallback state)</li>
+    <li><code>Choice</code> branches on the previous state's output (<code>$.stock</code>)</li>
+    <li>The console draws this JSON as a flowchart and replays every execution step by step</li>
   </ul>
 </section>
 
 <section>
-  <h2>When Serverless Doesn't Fit</h2>
+  <h2>🔁 Idempotency Is Mandatory</h2>
   <ul>
-    <li>Heavy per-request CPU — containers cheaper past a threshold</li>
-    <li>Long-lived connections (WebSocket at scale) — ECS/Fargate</li>
-    <li>p99 &lt; 50 ms — cold starts bite</li>
-    <li>State that must live across requests on the same node</li>
+    <li>Async + event-driven systems will redeliver</li>
+    <li>Same event applied twice must have the same effect</li>
+    <li>Common: a DynamoDB item keyed on event ID, set to "seen" on first handle</li>
+    <li>Powertools for AWS Lambda (Python) has a ready-to-use idempotency module</li>
   </ul>
 </section>
 

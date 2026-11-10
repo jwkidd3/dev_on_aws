@@ -45,6 +45,7 @@ aws dynamodb list-tables
 aws lambda list-functions
 ```
 
+- If a long list stops with a `:` prompt, you're in the pager — press **q** (Step 4 turns the pager off for good).
 - Every list succeeds. Expect to see other students' resources appear over the course — it's one shared account.
 - Nothing here is denied: `LabRole` is broad on purpose. You'll build a deliberately narrow identity and hit real denials in Lab 1c.
 
@@ -55,6 +56,8 @@ aws lambda list-functions
 ```bash
 cat > ~/.dev-on-aws.env <<'EOF'
 export AWS_REGION=us-east-1
+export AWS_DEFAULT_REGION=us-east-1
+export AWS_PAGER=""
 export USER_ID=user1    # *** SET THIS TO YOUR ASSIGNED USER (user2, user3, …) ***
 EOF
 
@@ -67,13 +70,13 @@ source ~/.dev-on-aws.env
 echo "You are $USER_ID in $AWS_REGION (account $ACCT)"
 ```
 
-> This one is small enough for a terminal heredoc. Re-source with `source ~/.dev-on-aws.env` if you open a new terminal.
+> This one is small enough for a terminal heredoc. The `.bashrc` line means every new terminal loads it automatically. `AWS_DEFAULT_REGION` is the variable boto3 reads (the CLI reads either); `AWS_PAGER=""` stops long CLI output from opening a pager.
 
 > ⚠️ **Use your own `USER_ID`.** The whole class shares one AWS account; your user ID is what keeps your buckets, table, and stack separate from everyone else's. If you skip this, `bootstrap.sh` refuses to run rather than collide on shared names.
 
 ## Success Criteria (2 min)
 
 - ✅ SDK program runs from Cloud9 and prints the `assumed-role/LabRole/…` ARN
-- ✅ CLI lists S3, DynamoDB, Lambda successfully (mostly empty)
+- ✅ CLI lists S3, DynamoDB, Lambda successfully
 - ✅ `~/.dev-on-aws.env` created and auto-sourced from `.bashrc`
 - ✅ `$USER_ID` is set to your assigned user

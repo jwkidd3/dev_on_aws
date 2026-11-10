@@ -37,19 +37,23 @@
 </section>
 
 <section>
-  <h2>Put + Conditional Write</h2>
-  <pre><code>table = boto3.resource("dynamodb").Table("Items")
+  <h2>✍️ Put + Conditional Write</h2>
+  <pre><code>from decimal import Decimal
+table = boto3.resource("dynamodb").Table(f"Items-{user_id}")
 
 table.put_item(
-  Item={"pk":"USER#user1","sk":"ITEM#001","title":"Blue widget","price":19.95},
+  Item={"pk":"USER#user1","sk":"ITEM#001","title":"Blue widget",
+        "price":Decimal("19.95")},   # resource API rejects floats
   ConditionExpression="attribute_not_exists(pk)"
 )</code></pre>
   <p class="small">Fails with <code>ConditionalCheckFailedException</code> if it already exists. Catch and move on — that's idempotency.</p>
 </section>
 
 <section>
-  <h2>Get &amp; Update</h2>
-  <pre><code>table.get_item(Key={"pk":"USER#user1","sk":"ITEM#001"},
+  <h2>🔄 Get &amp; Update</h2>
+  <pre><code>from decimal import Decimal
+
+table.get_item(Key={"pk":"USER#user1","sk":"ITEM#001"},
                ProjectionExpression="title, price")
 
 table.update_item(
@@ -61,7 +65,7 @@ table.update_item(
 </section>
 
 <section>
-  <h2>Query &amp; Scan</h2>
+  <h2>🔎 Query &amp; Scan</h2>
   <ul>
     <li><strong>Query</strong> — uses the primary key (required); efficient. Use this.</li>
     <li><strong>Scan</strong> — reads every item, then applies the filter. Avoid.</li>
@@ -71,7 +75,7 @@ table.update_item(
 </section>
 
 <section>
-  <h2>Query Example</h2>
+  <h2>🧪 Query Example</h2>
   <pre><code>from boto3.dynamodb.conditions import Key
 
 resp = table.query(
@@ -84,25 +88,26 @@ for item in resp["Items"]:
 </section>
 
 <section>
-  <h2>Batch &amp; Transaction</h2>
+  <h2>📦 Batch &amp; Transaction</h2>
   <ul>
-    <li><strong>BatchGetItem</strong> (up to 100 items) / <strong>BatchWriteItem</strong> (up to 25 items) — retry <code>UnprocessedItems</code></li>
+    <li><strong>BatchGetItem</strong> (up to 100 items) — retry <code>UnprocessedKeys</code></li>
+    <li><strong>BatchWriteItem</strong> (up to 25 items) — retry <code>UnprocessedItems</code></li>
     <li><strong>TransactWriteItems</strong> — up to 100 actions, all-or-nothing, costs 2× WCU</li>
     <li>Use transactions only when "two items must change together"</li>
   </ul>
 </section>
 
 <section>
-  <h2>PartiQL</h2>
+  <h2>💬 PartiQL</h2>
   <pre><code>SELECT title, price
-FROM  "Items"
+FROM  "Items-user1"
 WHERE pk = 'USER#user1'
   AND begins_with(sk, 'ITEM#')</code></pre>
   <p class="small">SQL-flavored wrapper. Good for ad-hoc; nudges people toward scans without warning.</p>
 </section>
 
 <section>
-  <h2>Caching: DAX &amp; Friends</h2>
+  <h2>⚡ Caching: DAX &amp; Friends</h2>
   <ul>
     <li><strong>DynamoDB Accelerator (DAX)</strong> — in-memory, write-through cache in front of a table; reads drop from milliseconds to microseconds</li>
     <li>API-compatible: swap the client for the DAX client, keep the same <code>GetItem</code> / <code>Query</code> calls</li>
@@ -113,7 +118,7 @@ WHERE pk = 'USER#user1'
 </section>
 
 <section>
-  <h2>Best Practices</h2>
+  <h2>✅ Best Practices</h2>
   <ul>
     <li>List access patterns first; design key schema second</li>
     <li>Prefer <strong>Query</strong> over <strong>Scan</strong>, every time</li>
@@ -131,6 +136,11 @@ WHERE pk = 'USER#user1'
     <li><strong>3b — DynamoDB via SDK.</strong> Load from a JSON file, client vs. resource API, filtered Query, GSI, conditional update.</li>
   </ul>
   <p class="small"><code>labs/lab3a-*.md · lab3b-*.md</code></p>
+</section>
+
+<section data-background-color="#146EB4">
+  <h2>Coming Up</h2>
+  <p>Module 9 — Processing Your Application Logic: AWS Lambda functions, triggers, packaging, and deployment.</p>
 </section>
 
 </div></div>

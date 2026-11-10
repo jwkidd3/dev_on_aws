@@ -34,7 +34,7 @@
 </section>
 
 <section>
-  <h2>Why DynamoDB</h2>
+  <h2>⚡ Why DynamoDB</h2>
   <ul>
     <li>Managed — no servers, patches, or backups to run yourself</li>
     <li>Single-digit millisecond reads and writes at any scale</li>
@@ -44,7 +44,7 @@
 </section>
 
 <section>
-  <h2>SQL Instincts to Unlearn</h2>
+  <h2>🧠 SQL Instincts to Unlearn</h2>
   <ul>
     <li>No <code>JOIN</code> — model access patterns, not entities</li>
     <li>No schema — items in one table can have different attributes</li>
@@ -54,7 +54,7 @@
 </section>
 
 <section>
-  <h2>Keys</h2>
+  <h2>🔑 Keys</h2>
   <ul>
     <li>Every table has a <strong>primary key</strong></li>
     <li>Simple: <strong>partition key</strong> only</li>
@@ -65,7 +65,7 @@
 </section>
 
 <section>
-  <h2>Item Anatomy</h2>
+  <h2>🧾 Item Anatomy</h2>
   <pre><code>{
   "pk":     "USER#user1",
   "sk":     "ITEM#2026-04-16T14:02Z",
@@ -78,7 +78,7 @@
 </section>
 
 <section>
-  <h2>Indexes</h2>
+  <h2>📇 Indexes</h2>
   <ul>
     <li><strong>GSI</strong> — any partition + sort key, async replication, eventual reads</li>
     <li><strong>LSI</strong> — same partition key as table, different sort, set at create time</li>
@@ -87,18 +87,18 @@
 </section>
 
 <section>
-  <h2>Connecting (Two Layers)</h2>
+  <h2>🔌 Connecting (Two Layers)</h2>
   <pre><code># Low-level client — one method per DynamoDB operation; attributes carry
 # type tags like {"S": "..."} and {"N": "..."}
 ddb = boto3.client("dynamodb")
 
 # Resource interface — typed Python values, less verbose
-table = boto3.resource("dynamodb").Table("Items")</code></pre>
-  <p class="small">Pick one layer per module of your code. Mixing them gets confusing fast.</p>
+table = boto3.resource("dynamodb").Table(f"Items-{user_id}")</code></pre>
+  <p class="small">Pick one layer per module of your code. Mixing them gets confusing fast. (<code>user_id = os.environ["USER_ID"]</code>, set in Lab 1b.)</p>
 </section>
 
 <section>
-  <h2>Common Exceptions</h2>
+  <h2>⚠️ Common Exceptions</h2>
   <ul>
     <li><strong>ResourceNotFoundException</strong> — table or index missing</li>
     <li><strong>ConditionalCheckFailedException</strong> — your <code>ConditionExpression</code> didn't match</li>

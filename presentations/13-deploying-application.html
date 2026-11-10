@@ -38,7 +38,7 @@
 </section>
 
 <section>
-  <h2>Why Deployment Used to Hurt</h2>
+  <h2>😬 Why Deployment Used to Hurt</h2>
   <ul>
     <li>Big-bang releases every quarter, long regression cycles</li>
     <li>Manual steps = someone types the wrong command at 2 AM</li>
@@ -48,7 +48,7 @@
 </section>
 
 <section>
-  <h2>Pillars of Modern Delivery</h2>
+  <h2>🏛️ Pillars of Modern Delivery</h2>
   <ul>
     <li><strong>Version control everything</strong> — code, config, IaC, pipelines</li>
     <li><strong>CI</strong> — every commit builds and tests</li>
@@ -59,12 +59,12 @@
 </section>
 
 <section>
-  <h2>What CloudFormation Is</h2>
+  <h2>📐 What CloudFormation Is</h2>
   <p class="small">AWS's native Infrastructure-as-Code service. You describe resources in a <strong>template</strong> (YAML or JSON), CloudFormation creates them as a <strong>stack</strong> — a named unit it tracks and can update or delete atomically. "Infrastructure as Code" in AWS ≈ CloudFormation, unless you're using a third-party tool on top.</p>
 </section>
 
 <section>
-  <h2>What SAM Is — and Isn't</h2>
+  <h2>🐿️ What SAM Is — and Isn't</h2>
   <ul>
     <li><strong>A CloudFormation dialect</strong> — less YAML; the CLI expands to full CFN</li>
     <li><strong>Real AWS resources</strong> — same Lambdas, tables, APIs; visible in each console</li>
@@ -75,7 +75,7 @@
 </section>
 
 <section class="sam-template">
-  <h2>A SAM Template</h2>
+  <h2>📄 A SAM Template</h2>
   <pre><code>Transform: AWS::Serverless-2016-10-31
 
 Resources:
@@ -100,7 +100,7 @@ Resources:
 </section>
 
 <section>
-  <h2>SAM Workflow</h2>
+  <h2>🔁 SAM Workflow</h2>
   <pre><code>sam build
 sam local invoke ItemsFn -e events/post.json
 sam local start-api
@@ -110,7 +110,19 @@ sam deploy --guided
 </section>
 
 <section>
-  <h2>Deployment Strategies</h2>
+  <h2>🧰 AWS Services for DevOps</h2>
+  <ul>
+    <li><strong>CodePipeline</strong> — orchestrates source → build → deploy stages on every commit</li>
+    <li><strong>CodeBuild</strong> — managed runners for tests and <code>sam build</code></li>
+    <li><strong>CodeDeploy</strong> — rolls out to Lambda, ECS, EC2; powers SAM's canary/linear shifting</li>
+    <li><strong>CloudFormation / SAM</strong> — the deploy stage applies your template</li>
+    <li>Source: GitHub / GitLab via <strong>CodeConnections</strong> (CodeCommit is closed to new customers)</li>
+  </ul>
+  <p class="small">In class you run <code>sam deploy</code> by hand (Lab 7b); a pipeline runs the same commands on every merge.</p>
+</section>
+
+<section>
+  <h2>🚀 Deployment Strategies</h2>
   <ul>
     <li><strong>All-at-once</strong> — fast, riskiest</li>
     <li><strong>Rolling</strong> — replace a subset at a time</li>
@@ -120,7 +132,7 @@ sam deploy --guided
 </section>
 
 <section>
-  <h2>Lambda Traffic Shifting</h2>
+  <h2>🐤 Lambda Traffic Shifting</h2>
   <pre><code>ItemsFn:
   Type: AWS::Serverless::Function
   Properties:
@@ -134,7 +146,7 @@ sam deploy --guided
 <section data-background-color="#146EB4">
   <h2>Coming Up</h2>
   <p>Module 14 — your app is running. How do you know it's healthy? Observability with CloudWatch and X-Ray.</p>
-  <p class="small">Then Labs 7a (X-Ray) and 7b (deploy it all with SAM) run back-to-back.</p>
+  <p class="small">Then Labs 7a (X-Ray) and 7b (SAM redeploys the API + function + table tier; Cognito and the site bucket stay outside it) run back-to-back.</p>
 </section>
 
 </div></div>

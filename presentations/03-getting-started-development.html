@@ -37,7 +37,7 @@
 </section>
 
 <section>
-  <h2>Three Ways to Talk to AWS</h2>
+  <h2>🛠️ Three Ways to Talk to AWS</h2>
   <ul>
     <li><strong>Console</strong> — web UI. Great for learning, bad for repeatability.</li>
     <li><strong>CLI</strong> — one command, one API call. Perfect for scripts and CI.</li>
@@ -47,7 +47,7 @@
 </section>
 
 <section>
-  <h2>The Python SDK — boto3</h2>
+  <h2>🐍 The Python SDK — boto3</h2>
   <pre><code># Amazon Linux 2023 ships Python 3 + pip, but NOT boto3.
 # Lab 1a's setup-cloud9.sh runs this for you:
 pip3 install --user boto3
@@ -61,7 +61,7 @@ aws --version</code></pre>
 </section>
 
 <section>
-  <h2>Credential Provider Chain</h2>
+  <h2>🔗 Credential Provider Chain</h2>
   <p class="small">Every SDK looks here, top to bottom. First match wins.</p>
   <ol>
     <li>Explicit credentials passed to the client</li>
@@ -73,7 +73,7 @@ aws --version</code></pre>
 </section>
 
 <section>
-  <h2>Your First SDK Call</h2>
+  <h2>🚀 Your First SDK Call</h2>
   <pre><code>import boto3
 
 # STS — identity check
@@ -82,22 +82,22 @@ print(boto3.client("sts").get_caller_identity()["Arn"])
 # S3 — list what's in the account
 for b in boto3.client("s3").list_buckets()["Buckets"]:
     print(b["Name"])</code></pre>
-  <p class="small">No credentials in code. <code>boto3</code> walks the provider chain and picks up the Cloud9 instance's AWS-managed temp credentials automatically.</p>
+  <p class="small">No credentials in code. <code>boto3</code> walks the provider chain and picks up the attached <code>LabRole</code> instance-profile credentials through instance metadata (Lab 1a turns AMTC off).</p>
 </section>
 
 <section>
-  <h2>Common Patterns</h2>
+  <h2>🔁 Common Patterns</h2>
   <ul>
     <li><strong>Paginators</strong> — iterate one page at a time without bookkeeping</li>
     <li><strong>Waiters</strong> — block until a resource exists / is ready</li>
     <li><strong>Retry &amp; backoff</strong> — built into every SDK; tune, don't replace</li>
-    <li><strong>Typed exceptions</strong> — <code>NoSuchBucket</code>, <code>AccessDenied</code></li>
+    <li><strong>Error handling</strong> — catch <code>botocore.exceptions.ClientError</code>, then branch on <code>e.response['Error']['Code']</code> (<code>AccessDenied</code>, <code>NoSuchBucket</code>…)</li>
     <li><strong>Presigned URLs</strong> — time-limited access to private resources</li>
   </ul>
 </section>
 
 <section>
-  <h2>Regions Matter</h2>
+  <h2>🌎 Regions Matter</h2>
   <ul>
     <li>Most services are <em>regional</em> — a bucket in <code>us-east-1</code> ≠ <code>eu-west-1</code></li>
     <li>Set on the client (<code>region_name="us-east-1"</code>) or via <code>AWS_REGION</code></li>
@@ -107,7 +107,7 @@ for b in boto3.client("s3").list_buckets()["Buckets"]:
 </section>
 
 <section>
-  <h2>AWS Cloud9 — Our Class IDE</h2>
+  <h2>☁️ AWS Cloud9 — Our Class IDE</h2>
   <ul>
     <li>Browser-based IDE running on an EC2 instance in the class account</li>
     <li>Pre-installed: AWS CLI, Python, <code>git</code>, <code>jq</code>, Docker, SAM CLI</li>
@@ -116,22 +116,12 @@ for b in boto3.client("s3").list_buckets()["Buckets"]:
     <li>Work persists on EBS between days; URL is shareable for pair-debugging</li>
   </ul>
   <p class="small">Outside class, local VS Code + JetBrains with the AWS Toolkit remain first-class choices for real projects.</p>
-</section>
-
-<section data-background-color="#FF9900">
-  <span class="lab-tag">Hands-On Lab Block · 2 × 30–35 min</span>
-  <h2>🧪 Labs 1a · 1b</h2>
-  <ul>
-    <li><strong>1a — Sign In &amp; Create Your Cloud9 Environment.</strong> Attach <code>LabRole</code>, disable AMTC, clone the course repo, run <code>setup-cloud9.sh</code> (tools + 100 GB disk) and reboot.</li>
-    <li><strong>1b — First SDK Call in Cloud9.</strong> <code>smoke_test.py</code> — <code>sts:GetCallerIdentity</code> + <code>s3:ListBuckets</code>.</li>
-  </ul>
-  <p class="small">Run after Module 4 — Lab 1c (IAM authoring) follows them.</p>
-  <p class="small"><code>labs/lab1a-*.md · lab1b-*.md</code></p>
+  <p class="small">Note: AWS Cloud9 has been closed to new customers since July 2024; it remains available in accounts already using it, like this class account.</p>
 </section>
 
 <section data-background-color="#146EB4">
   <h2>Coming Up</h2>
-  <p>Module 4 — IAM. Every SDK call you just saw needs permission to run.</p>
+  <p>Module 4 — IAM. Every SDK call you just saw needs permission to run. Labs 1a – 1c follow it.</p>
 </section>
 
 </div></div>

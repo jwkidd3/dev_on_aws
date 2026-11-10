@@ -1,6 +1,6 @@
 # 🔍 Lab 7a — Instrument Lambda with X-Ray
 
-*Hands-On Lab · 45 min · Module 14 — Observability*
+*Hands-On Lab · 45 min · SDK · Module 14 — Observability*
 
 ## Objectives (3 min)
 
@@ -17,17 +17,17 @@
 
 - Labs 4–6 complete — `lab4-$USER_ID` behind the Cognito-protected API
 - Exported: `$USER_ID`, `$API_ID`, `$URL`, `$CLIENT_ID`
+> **Starting fresh?** Run `bash ~/environment/dev-on-aws/bootstrap.sh 7a` (creates-or-reuses the full stack through Cognito and the Swagger import, several minutes), then `source ~/.dev-on-aws.env` for a fresh `$ID_TOKEN`, and skip the refresh below.
+
 - Refresh your token — the one from this morning has expired:
 
 ```bash
 source ~/environment/dev-on-aws/refresh-token.sh
 ```
 
-> **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 7a` creates-or-reuses the full stack through Cognito and the Swagger import, with a fresh `$ID_TOKEN`.
-
 ## Step 1 — Package the SDK for Lambda (8 min)
 
-> Cloud9 runs Python 3.9 on x86; your function runs **Python 3.12 on arm64**. A plain `pip install -t .` would grab x86/3.9 builds of `wrapt` (which has compiled code) and also vendor its own `botocore`, shadowing the runtime's. So ask pip for the *target* platform and skip `botocore` (Lambda already has it):
+> Cloud9's default `python3`/`pip3` is 3.9 on x86 (the setup script adds `python3.12` alongside, for SAM); your function runs **Python 3.12 on arm64**. A plain `pip install -t .` would grab x86/3.9 builds of `wrapt` (which has compiled code) and also vendor its own `botocore`, shadowing the runtime's. So ask pip for the *target* platform and skip `botocore` (Lambda already has it):
 
 ```bash
 cd ~/environment/dev-on-aws/lab4
@@ -90,9 +90,9 @@ curl -s -o /dev/null -w "GET bogus: %{http_code}\n"  -H "Authorization: $ID_TOKE
 
 1. CloudWatch console → **X-Ray traces** → **Trace Map**. Expect: client → API Gateway `dev-on-aws-<you>/dev` → `lab4-<you>` → DynamoDB / S3. Other students' services may appear too — it's one account. Focus on the nodes with **your** user in the name.
 2. Click the Lambda node → response-time histogram
-3. **Traces** → in the query box, filter by your annotations:
-   - `annotation.method = "GET"` → just your two GETs
-   - `http.status = 404` → the bogus request; open it and find the `handler` subsegment and the DynamoDB `GetItem` that returned nothing
+3. **Traces** → in the query box, filter by your annotations. Other students' traces match too, so add your user: get Alice's `sub` with `python3 ~/environment/dev-on-aws/lab6/decode_jwt.py "$ID_TOKEN" --sub`, then:
+   - `annotation.user = "<sub>" AND annotation.method = "GET"` → just your two GETs
+   - `annotation.user = "<sub>" AND http.status = 404` → the bogus request; open it and find the `handler` subsegment and the DynamoDB `GetItem` that returned nothing
 4. Open any POST trace → **Metadata** tab on the `handler` subsegment shows the full event
 
 > The same filter from the CLI — handy in scripts and runbooks:

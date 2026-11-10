@@ -19,7 +19,7 @@
 
 ## Prerequisites (3 min)
 
-- Lab 1a complete; Labs 2a + 3a done (or run bootstrap — see below)
+- Labs 1a + 1b complete (`$USER_ID` set)
 - AWS Console tab open
 
 > **Starting fresh?** `bash ~/environment/dev-on-aws/bootstrap.sh 4a` creates-or-reuses the uploads bucket and `Items-$USER_ID` table so the handler has something to read/write.
@@ -59,7 +59,7 @@ def lambda_handler(event, context):
     }
 ```
 
-> Click **Deploy** (the orange button). This uploads the edited code.
+> Click **Deploy** (left side of the code editor, or Ctrl+Shift+U). This uploads the edited code.
 
 ## Step 3 — Configure Memory, Timeout, Env Vars (6 min)
 
@@ -95,7 +95,7 @@ cat out.json
 # {"statusCode":200,"body":"{\"message\":\"Hi, Cloud9!\",...}"}
 ```
 
-> Refresh the logs in the console — a second stream appears.
+> Refresh the logs in the console. A new `START` / `END` / `REPORT` set appears: in the same stream if the function was still warm, or in a new stream (with a fresh `INIT_START`) after a cold start.
 
 ## Success Criteria (3 min)
 

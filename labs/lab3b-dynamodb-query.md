@@ -1,6 +1,6 @@
 # 🗄️ Lab 3b — Query, GSI & Pagination
 
-*Hands-On Lab · 45 min · Module 8 — Databases*
+*Hands-On Lab · 45 min · SDK · Module 8 — Databases*
 
 ## Objectives (2 min)
 
@@ -18,10 +18,9 @@
 
 - Lab 3a complete — table `Items-$USER_ID` active, 2 items present
 - `$USER_ID` set (`echo $USER_ID`); the scripts read it to find **your** table and partition in the shared account
-- The scripts don't pass `region_name`, so boto3 reads the region from the environment — set it once for this shell:
+- The scripts don't pass `region_name`; boto3 reads `AWS_DEFAULT_REGION` from `~/.dev-on-aws.env` (Lab 1b). If `echo $AWS_DEFAULT_REGION` is blank, run `export AWS_DEFAULT_REGION=us-east-1`.
 
 ```bash
-export AWS_DEFAULT_REGION=us-east-1
 cd ~/environment/dev-on-aws/lab3
 ```
 
@@ -99,7 +98,7 @@ python3 update_conditional.py    # updated → {... 'price': Decimal('9.99'), 'v
 python3 update_conditional.py    # ConditionalCheckFailedException — nothing written
 ```
 
-> This is how you prevent lost updates: the database checks the precondition and writes in one atomic step.
+> The database checks the precondition and writes in one atomic step, so the second run can't silently overwrite. For full optimistic locking against concurrent writers, condition on a `version` attribute you increment on every write.
 
 ## Step 7 — Scan (Just Once, to Feel It) (3 min)
 
