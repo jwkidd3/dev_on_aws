@@ -91,11 +91,11 @@ Which labs each teaching module sets up. Modules without labs are pure concept /
 | 10 | Managing the APIs                       | **5a**             | 2 |
 | 11 | Building a Modern Application           | — (integration)    | 3 |
 | 12 | Granting Access to Application Users    | **6a, 6b, 6c**     | 3 |
-| 13 | Deploying Your Application              | **7b**             | 3 |
-| 14 | Observing Your Application              | **7a**             | 3 |
+| 13 | Deploying Your Application              | — (paired w/ M14)  | 3 |
+| 14 | Observing Your Application              | **7a, 7b**         | 3 |
 | 15 | Course Wrap-up                          | —                  | 3 |
 
-Labs 7a and 7b are done back-to-back on Day 3: **7a** (X-Ray instrumentation, paired with M14) copies the instrumented handler `labs/files/lab7/python/handler.py` into the hand-built `lab4-userN` function; **7b** (SAM deploy, paired with M13) deploys that same file as a fresh HTTP API + Lambda + table stack via CloudFormation.
+Labs 7a and 7b are done back-to-back on Day 3: **7a** (X-Ray instrumentation, paired with M14) copies the instrumented handler `labs/files/lab7/python/handler.py` into the hand-built `lab4-userN` function; **7b** (SAM deploy, taught in M13, run after 7a) deploys that same file as a fresh HTTP API + Lambda + table stack via CloudFormation.
 
 ## Console vs. SDK Labs
 

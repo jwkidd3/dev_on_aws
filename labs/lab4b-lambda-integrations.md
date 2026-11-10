@@ -97,6 +97,8 @@ aws s3api put-bucket-notification-configuration \
     --notification-configuration file:///tmp/notify.json
 ```
 
+> ⏱️ If this fails with `Unable to validate the following destination configurations`, the `add-permission` from the first block hasn't propagated yet. Wait about 10 seconds and run the `put-bucket-notification-configuration` command again.
+
 ## Step 5 — Fire & Observe (6 min)
 
 ```bash

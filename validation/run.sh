@@ -57,9 +57,10 @@ try() {
   return 1
 }
 
-code_is() {  # code_is "desc" expected curl-args…  (retries while a fresh deployment propagates)
+code_is() {  # code_is "desc" expected curl-args…  (retries ~90 s while a fresh deployment propagates;
+             # API Gateway redeploys interleave old/new deployments for 30–80 s)
   local desc="$1" want="$2"; shift 2; local got="" i
-  for i in 1 2 3 4 5 6; do
+  for i in $(seq 1 18); do
     got=$(curl -s -o "$TMP/http.out" -w '%{http_code}' "$@")
     [ "$got" = "$want" ] && { pass "$desc → $got"; return 0; }
     sleep 5
@@ -646,9 +647,19 @@ try "add-permission (s3 invoke)" \
     --action lambda:InvokeFunction --principal s3.amazonaws.com \
     --source-arn "arn:aws:s3:::$BUCKET_UPLOADS"
 sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" "$LABFILES/lab4/notify.json" > "$TMP/notify.json"
-try "put-bucket-notification-configuration (rendered notify.json)" \
-  aws s3api put-bucket-notification-configuration --bucket "$BUCKET_UPLOADS" \
-    --notification-configuration "file://$TMP/notify.json"
+# The fresh add-permission can take a few seconds to propagate; until it does,
+# S3 rejects the config with "Unable to validate the following destination
+# configurations". Retry for up to ~60 s (Lab 4b tells students the same).
+NOTIFY_ERR=""
+for i in $(seq 1 12); do
+  NOTIFY_ERR=$(aws s3api put-bucket-notification-configuration --bucket "$BUCKET_UPLOADS" \
+      --notification-configuration "file://$TMP/notify.json" 2>&1 >/dev/null) && { NOTIFY_ERR=""; break; }
+  printf '%s' "$NOTIFY_ERR" | grep -q "Unable to validate" || break
+  sleep 5
+done
+[ -z "$NOTIFY_ERR" ] \
+  && pass "put-bucket-notification-configuration (rendered notify.json)" \
+  || fail "put-bucket-notification-configuration (rendered notify.json)" "$(printf '%s' "$NOTIFY_ERR" | tr '\n' ' ' | head -c 220)"
 # A brand-new notification config can take a few minutes to start delivering
 # (observed in this account) — re-upload every minute, give up after ~6 min.
 TRIG=""
