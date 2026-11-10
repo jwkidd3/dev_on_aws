@@ -645,7 +645,7 @@ print(b['url'])" 2>/dev/null) \
 try "add-permission (s3 invoke)" \
   aws lambda add-permission --function-name "$LAMBDA_FN" --statement-id AllowS3Invoke \
     --action lambda:InvokeFunction --principal s3.amazonaws.com \
-    --source-arn "arn:aws:s3:::$BUCKET_UPLOADS"
+    --source-arn "arn:aws:s3:::$BUCKET_UPLOADS" --source-account "$ACCT"
 sed -e "s/ACCT/$ACCT/g" -e "s/USER/$USER_ID/g" "$LABFILES/lab4/notify.json" > "$TMP/notify.json"
 # The fresh add-permission can take a few seconds to propagate; until it does,
 # S3 rejects the config with "Unable to validate the following destination
