@@ -247,13 +247,16 @@ dev_on_aws/
 
 Course materials live in the public GitHub repo
 [**jwkidd3/dev_on_aws**](https://github.com/jwkidd3/dev_on_aws). Lab 1a
-Step 4 has students clone it and copy the supporting files into their
+Step 5 has students clone it and copy the supporting files into their
 workspace:
 
 ```
 cd ~/environment
-git clone https://github.com/jwkidd3/dev_on_aws
-cp -r dev_on_aws/labs/files ./dev-on-aws
+# Clone the repo, or update it if you've cloned it before
+if [ -d dev_on_aws ]; then git -C dev_on_aws pull; else git clone https://github.com/jwkidd3/dev_on_aws; fi
+# Copy the lab files INTO dev-on-aws (the trailing /. matters: safe to re-run)
+mkdir -p dev-on-aws
+cp -r dev_on_aws/labs/files/. dev-on-aws/
 ```
 
 From then on, every lab opens files that are already on disk under

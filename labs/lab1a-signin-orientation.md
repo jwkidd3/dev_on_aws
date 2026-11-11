@@ -61,12 +61,17 @@
 
 ```bash
 cd ~/environment
-git clone https://github.com/jwkidd3/dev_on_aws
-cp -r dev_on_aws/labs/files ./dev-on-aws
+# Clone the repo, or update it if you've cloned it before
+if [ -d dev_on_aws ]; then git -C dev_on_aws pull; else git clone https://github.com/jwkidd3/dev_on_aws; fi
+# Copy the lab files INTO dev-on-aws (the trailing /. matters: safe to re-run)
+mkdir -p dev-on-aws
+cp -r dev_on_aws/labs/files/. dev-on-aws/
 cd ~/environment/dev-on-aws && ls
 ```
 
 > Expect `bootstrap.sh  cleanup.sh  lab1  lab2  lab3  lab4  lab6  lab7  refresh-token.sh  setup-cloud9.sh` (there is no `lab5` folder — Lab 5a is all CLI). Raise your hand if anything's missing.
+
+> **See a `files` folder instead?** An older copy put everything one level too deep. Run the two `mkdir`/`cp` lines above again, and the files land where every lab expects them.
 
 ## Step 6 — Run the Class Setup Script, Then Reboot (5 min)
 
