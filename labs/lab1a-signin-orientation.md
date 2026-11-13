@@ -83,7 +83,7 @@ bash ~/environment/dev-on-aws/setup-cloud9.sh
 
 - **Checks you're running as `LabRole`.** If it stops here, Steps 3–4 aren't done; fix them and re-run.
 - **Installs the class tools:** boto3, jq, zip, Python 3.12 + pip, the latest SAM CLI, and Docker access for your user
-- **Grows your disk from 10 GB to 100 GB.** Lab 7b's `sam build --use-container` pulls multi-GB Docker images.
+- **Grows your disk from 10 GB to 100 GB.** The default 10 GB fills up with Docker images and build artifacts by Day 3.
 - **Ends with a ⚠️ REBOOT REQUIRED box**
 
 When you see the box, run:

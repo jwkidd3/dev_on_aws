@@ -51,12 +51,12 @@ ls -R
 
 ## Step 2 — Build & First Deploy (7 min)
 
-> Our Lambda's `Runtime: python3.12`. `--use-container` builds inside AWS's official Python 3.12 Docker image, so it matches Lambda exactly. That's the reliable path, and the 100 GB disk from Lab 1a's setup script leaves room for the image.
+> Our Lambda is `Runtime: python3.12` on `arm64` (Graviton). `setup-cloud9.sh` installed Python 3.12 + pip, so `sam build` builds natively: it downloads the **arm64 (manylinux aarch64)** wheels for `aws-xray-sdk` and its dependencies, even though your Cloud9 instance is x86_64.
 
 ```bash
 cd ~/environment/dev-on-aws/lab7
 
-sam build --use-container
+sam build
 
 sam deploy --guided --stack-name dev-on-aws-$USER_ID --region us-east-1 \
     --parameter-overrides CognitoPoolId=$POOL_ID CognitoClientId=$CLIENT_ID UploadsBucket=$BUCKET
@@ -67,7 +67,7 @@ sam deploy --guided --stack-name dev-on-aws-$USER_ID --region us-east-1 \
 # First deploy takes ~2–3 min
 ```
 
-> **Docker not working?** `setup-cloud9.sh` also installed Python 3.12 + pip, so plain `sam build` (without `--use-container`) works too. If `docker ps` says *permission denied*, you skipped the reboot after the setup script; run `sudo reboot`.
+> **Don't add `--use-container` here.** Your m5.large is x86_64 and the function is arm64, so the arm64 build image can't execute: you get `exec format error` → `Builder crashed` / `JSONDecodeError`. **`Build Failed` saying `python3.12` not found?** The setup script's Python step didn't finish: run `sudo dnf install -y python3.12 python3.12-pip` and build again.
 
 > Creates an S3 bucket for artifacts (prefixed `aws-sam-cli-managed-default-`) on first use — acceptable in shared accounts.
 
@@ -92,7 +92,7 @@ curl -s -o /dev/null -w "no token: %{http_code}\n" $API_URL/items  # 401 from th
 ## Step 4 — Iterate (7 min)
 
 1. Edit `python/handler.py` — e.g., add `print("v2 handler")` as the first line of `handler()`
-2. `sam build --use-container && sam deploy` (no `--guided`; reuses `samconfig.toml`). Answer **y** at the changeset prompt; build + deploy takes 1–3 min
+2. `sam build && sam deploy` (no `--guided`; reuses `samconfig.toml`). Answer **y** at the changeset prompt; build + deploy takes 1–3 min
 3. Call the API again and watch the logs for your new line:
 
 ```bash

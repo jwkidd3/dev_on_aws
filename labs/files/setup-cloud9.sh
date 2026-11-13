@@ -7,8 +7,8 @@
 #
 # 1. Installs / updates the class tools: boto3, jq, zip/unzip, Python 3.12 + pip,
 #    the latest AWS SAM CLI, and makes sure Docker is running for you.
-# 2. Grows THIS instance's root EBS volume to 100 GB (sam build --use-container
-#    pulls multi-GB Docker images; the default 10 GB fills up).
+# 2. Grows THIS instance's root EBS volume to 100 GB (Docker images and build
+#    artifacts fill the default 10 GB).
 # 3. Tells you to reboot.
 #
 # Safe in the shared class account: it only ever touches the instance it runs on
